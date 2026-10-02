@@ -1,0 +1,1 @@
+{"version":"0.2.0","configurations":[{"name":"SaaS Marketplace de Mão de Obra Local","type":"node-terminal","request":"launch","command":"npm run dev"}]}
