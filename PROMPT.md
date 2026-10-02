@@ -1,0 +1,1 @@
+Este projeto já é o SaaS Marketplace de Mão de Obra Local. O roteiro de personalização já foi aplicado. Trate este código como produto em evolução, preserve as capacidades preparadas e faça mudanças somente a partir dos objetivos do produto.
