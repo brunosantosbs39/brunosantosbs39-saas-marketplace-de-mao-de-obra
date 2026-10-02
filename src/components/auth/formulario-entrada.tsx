@@ -41,7 +41,7 @@ export function FormularioEntrada() {
   function entrarComoVisitante() {
     setErro("");
     abrirSessao({ nome: "Visitante de teste" });
-    router.replace("/app/inicio");
+    window.location.assign("/app/inicio");
   }
 
   function enviar(e: React.FormEvent) {
