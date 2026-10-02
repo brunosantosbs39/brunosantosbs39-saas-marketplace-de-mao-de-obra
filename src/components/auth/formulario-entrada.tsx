@@ -20,7 +20,9 @@ export function FormularioEntrada() {
 
     if (params.get("google") !== "sucesso") {
       const codigo = params.get("erro");
-      if (codigo === "google-nao-configurado") setErro("O login Google ainda precisa das chaves no ambiente da Vercel.");
+      if (codigo === "google-nao-configurado") {
+        setErro("O login Google ainda precisa das chaves no ambiente da Vercel. Você pode usar o modo de teste abaixo.");
+      }
       if (codigo === "google-cancelado") setErro("O login com Google foi cancelado.");
       if (codigo === "google-falhou") setErro("Não foi possível concluir o login com Google.");
       return;
@@ -36,6 +38,12 @@ export function FormularioEntrada() {
       .catch(() => setErro("A sessão Google não pôde ser carregada."));
   }, [router]);
 
+  function entrarComoVisitante() {
+    setErro("");
+    abrirSessao({ nome: "Visitante de teste" });
+    router.replace("/app/inicio");
+  }
+
   function enviar(e: React.FormEvent) {
     e.preventDefault();
     if (!usuario.trim()) {
@@ -50,6 +58,18 @@ export function FormularioEntrada() {
 
   return (
     <form noValidate onSubmit={enviar} className="grid gap-4">
+      <Button
+        type="button"
+        className="w-full"
+        onClick={entrarComoVisitante}
+      >
+        Entrar como visitante
+      </Button>
+
+      <p className="-mt-2 text-center text-xs text-ink-muted">
+        Modo de teste: entra direto no app sem Google e sem senha.
+      </p>
+
       <Button
         type="button"
         variant="secondary"
@@ -68,7 +88,7 @@ export function FormularioEntrada() {
         <span className="h-px flex-1 bg-hairline" />ou<span className="h-px flex-1 bg-hairline" />
       </div>
 
-      <Campo id="usuario" rotulo="Usuário" ajuda="Use seu nome ou e-mail.">
+      <Campo id="usuario" rotulo="Usuário" ajuda="Use seu nome ou e-mail para a entrada local.">
         <Input
           ref={ref}
           id="usuario"
@@ -79,7 +99,7 @@ export function FormularioEntrada() {
         />
       </Campo>
 
-      <Campo id="senha" rotulo="Senha" ajuda="Ela fica só neste navegador durante esta demonstração.">
+      <Campo id="senha" rotulo="Senha" ajuda="Nesta demonstração, ela não é validada no servidor.">
         <Input
           id="senha"
           type="password"
@@ -89,7 +109,9 @@ export function FormularioEntrada() {
         />
       </Campo>
 
-      <Button type="submit" className="w-full">Entrar</Button>
+      <Button type="submit" variant="secondary" className="w-full">
+        Entrar com acesso local
+      </Button>
     </form>
   );
 }
