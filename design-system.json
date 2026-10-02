@@ -1,0 +1,30 @@
+{
+  "id": "meu-visual",
+  "name": "Meu visual",
+  "mode": "dark",
+  "tokens": {
+    "canvas": "#090909",
+    "surface": "#141414",
+    "surfaceElevated": "#222222",
+    "ink": "#ffffff",
+    "inkMuted": "#9c9c9c",
+    "primary": "#ffffff",
+    "primaryInk": "#000000",
+    "primaryHover": "#ffffff",
+    "primaryAccent": "#ffffff",
+    "hairline": "#353535",
+    "success": "#4ade80",
+    "danger": "#f87171",
+    "warning": "#fbbf24"
+  },
+  "type": {
+    "display": "\"GT Walsheim Framer Medium\", ui-sans-serif, system-ui, sans-serif",
+    "body": "\"Inter Variable\", ui-sans-serif, system-ui, sans-serif",
+    "displayWeight": 500,
+    "tracking": "-0.08em"
+  },
+  "radius": "10px",
+  "layout": {"density":"comfortable","space":"14px","lineHeight":1.65},
+  "radiusSurface": "10px",
+  "radiusFine": "8px"
+}
