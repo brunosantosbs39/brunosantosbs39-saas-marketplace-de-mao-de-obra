@@ -1,0 +1,1 @@
+import {NextResponse} from "next/server";import ds from "../../../../design-system.json";import {contraste} from "@/lib/contraste";export async function GET(){if(process.env.NODE_ENV==="production")return new NextResponse(null,{status:404});return NextResponse.json({inkCanvas:contraste(ds.tokens.ink,ds.tokens.canvas),mutedCanvas:contraste(ds.tokens.inkMuted,ds.tokens.canvas)})}

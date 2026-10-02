@@ -1,0 +1,1 @@
+import {cn} from "@/lib/cn";export function Select(p:React.SelectHTMLAttributes<HTMLSelectElement>){return <select {...p} className={cn("min-h-11 w-full rounded-ds border border-hairline bg-canvas px-3 text-ink",p.className)}/>;}

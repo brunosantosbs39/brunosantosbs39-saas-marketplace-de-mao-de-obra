@@ -1,0 +1,1 @@
+function lum(hex:string){const c=hex.replace("#","").match(/.{2}/g)!.map(x=>parseInt(x,16)/255).map(v=>v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4));return .2126*c[0]+.7152*c[1]+.0722*c[2];}export function contraste(a:string,b:string){const [x,y]=[lum(a),lum(b)].sort((m,n)=>n-m);return (x+.05)/(y+.05);}

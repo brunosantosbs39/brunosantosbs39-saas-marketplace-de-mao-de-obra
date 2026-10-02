@@ -1,0 +1,1 @@
+export function Logo(){return <svg viewBox="0 0 48 48" className="h-9 w-9" aria-hidden="true"><path d="M8 29c7-12 15-17 24-17 4 0 7 1 8 2v20c-3-2-6-3-10-3-8 0-14 3-20 9l-2-11Z" fill="none" stroke="currentColor" strokeWidth="2"/><path d="M14 22h19M17 17h13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>}

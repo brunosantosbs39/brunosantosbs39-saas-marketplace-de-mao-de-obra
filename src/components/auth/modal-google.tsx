@@ -1,0 +1,4 @@
+"use client";
+import { Dialogo } from "@/components/ui/dialogo";
+import { BlocoCopiavel } from "./bloco-copiavel";
+export function ModalGoogle({ aberto, onClose }: { aberto: boolean; onClose: () => void }) {const passos=["Abra o Google Cloud Console.","Crie ou selecione um projeto.","Configure a tela de consentimento OAuth.","Crie credenciais do tipo Aplicativo da Web.","Adicione a origem autorizada do seu app.","Adicione a URI de retorno abaixo.","Cole GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET e AUTH_SECRET no .env.local."];return <Dialogo aberto={aberto} onClose={onClose} titulo="Conectar login com Google"><ol className="grid gap-3 text-sm text-ink-muted">{passos.map((passo,index)=><li key={passo}><strong className="text-ink">{index+1}.</strong> {passo}</li>)}</ol><div className="mt-4 grid gap-2"><BlocoCopiavel valor="http://localhost:3000"/><BlocoCopiavel valor="http://localhost:3000/api/auth/callback"/></div></Dialogo>}

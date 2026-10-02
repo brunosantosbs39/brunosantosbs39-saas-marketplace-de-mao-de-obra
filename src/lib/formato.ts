@@ -1,0 +1,1 @@
+export function dataHora(v:string){return new Intl.DateTimeFormat("pt-BR",{dateStyle:"short",timeStyle:"short",timeZone:"America/Sao_Paulo"}).format(new Date(v));}export function chaveBusca(v:string){return v.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();}export function contagem(n:number,sing:string,plur:string){return `${n} ${n===1?sing:plur}`;}

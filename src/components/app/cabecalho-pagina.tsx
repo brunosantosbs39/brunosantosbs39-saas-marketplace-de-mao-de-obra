@@ -1,0 +1,1 @@
+export function CabecalhoPagina({titulo,apoio,acao}:{titulo:string;apoio?:string;acao?:React.ReactNode}){return <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><h1 className="text-3xl font-medium tracking-tight">{titulo}</h1>{apoio&&<p className="mt-2 max-w-2xl text-ink-muted">{apoio}</p>}</div>{acao}</header>}

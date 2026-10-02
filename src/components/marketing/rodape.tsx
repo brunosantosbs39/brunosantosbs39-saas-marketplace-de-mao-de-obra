@@ -1,0 +1,1 @@
+import Link from "next/link";export function Rodape(){return <footer className="mx-auto flex max-w-6xl flex-col gap-4 px-5 py-10 text-sm text-ink-muted sm:flex-row sm:items-center sm:justify-between"><span>Mão Local</span><div className="flex gap-4"><Link href="/como-usar">Como usar</Link><Link href="/entrar">Entrar</Link></div></footer>}

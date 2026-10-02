@@ -1,0 +1,1 @@
+import {site} from "@/content/site";export function Valor(){return <section className="mx-auto max-w-6xl px-5 py-20"><div className="grid gap-8 md:grid-cols-2"><h2 className="text-4xl font-medium tracking-[-.05em]">{site.valor.titulo}</h2><p className="text-lg text-ink-muted">{site.valor.texto}</p></div></section>}

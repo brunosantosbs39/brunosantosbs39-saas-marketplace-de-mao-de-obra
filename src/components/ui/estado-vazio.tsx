@@ -1,0 +1,1 @@
+export function EstadoVazio({titulo,texto,acao}:{titulo:string;texto:string;acao?:React.ReactNode}){return <div className="rounded-ds-surface border border-dashed border-hairline p-8 text-center"><h3 className="font-medium">{titulo}</h3><p className="mt-2 text-sm text-ink-muted">{texto}</p>{acao&&<div className="mt-4">{acao}</div>}</div>}

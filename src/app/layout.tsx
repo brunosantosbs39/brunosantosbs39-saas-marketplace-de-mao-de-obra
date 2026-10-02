@@ -1,0 +1,1 @@
+import "./globals.css";import {variaveisDesignSystem} from "@/lib/design-system";export const metadata={title:"Mão Local",description:"Marketplace local de mão de obra"};export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="pt-BR" style={variaveisDesignSystem()}><body>{children}</body></html>}

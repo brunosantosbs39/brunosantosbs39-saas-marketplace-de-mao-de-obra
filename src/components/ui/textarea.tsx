@@ -1,0 +1,1 @@
+import {cn} from "@/lib/cn";export function Textarea(p:React.TextareaHTMLAttributes<HTMLTextAreaElement>){return <textarea {...p} className={cn("min-h-28 w-full rounded-ds-surface border border-hairline bg-canvas px-3 py-2 text-ink placeholder:text-ink-muted",p.className)}/>;}
