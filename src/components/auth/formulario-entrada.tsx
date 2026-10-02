@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Campo } from "@/components/ui/campo";
@@ -10,13 +10,14 @@ import { IconeGoogle } from "./icone-google";
 
 export function FormularioEntrada() {
   const router = useRouter();
-  const params = useSearchParams();
   const [usuario, setUsuario] = useState("");
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState("");
   const ref = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+
     if (params.get("google") !== "sucesso") {
       const codigo = params.get("erro");
       if (codigo === "google-nao-configurado") setErro("O login Google ainda precisa das chaves no ambiente da Vercel.");
@@ -33,7 +34,7 @@ export function FormularioEntrada() {
         router.replace("/app/inicio");
       })
       .catch(() => setErro("A sessão Google não pôde ser carregada."));
-  }, [params, router]);
+  }, [router]);
 
   function enviar(e: React.FormEvent) {
     e.preventDefault();
