@@ -39,3 +39,6 @@ npx vercel --prod --yes
 - `src/lib`: tipos, modelo, dados, store, design system e capacidades de backend.
 - `.storybook`: catálogo de componentes.
 - `n8n`: automações preparadas.
+
+
+Deploy automático: Vercel conectado ao branch `main`.
