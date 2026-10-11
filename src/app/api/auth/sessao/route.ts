@@ -10,5 +10,8 @@ export async function GET(req: Request) {
     ?.slice(nomeCookieSessao.length + 1);
 
   const sessao = await lerCookieSessao(token);
-  return NextResponse.json({ sessao });
+  return NextResponse.json(
+    { sessao },
+    { headers: { "Cache-Control": "no-store" } },
+  );
 }

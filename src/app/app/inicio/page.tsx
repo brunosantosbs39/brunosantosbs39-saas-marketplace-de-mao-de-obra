@@ -1,1 +1,111 @@
-"use client";import Link from "next/link";import {useEffect,useState} from "react";import {useDados} from "@/lib/store";import {categorias} from "@/lib/modelo";import {Card} from "@/components/ui/card";import {Badge} from "@/components/ui/badge";import {CabecalhoPagina} from "@/components/app/cabecalho-pagina";export default function Inicio(){const d=useDados();const [primeiro,setPrimeiro]=useState(false);useEffect(()=>{setPrimeiro(!localStorage.getItem("mao-local:boas-vindas"))},[]);if(primeiro)return <div><CabecalhoPagina titulo="Painel operacional de ativação" apoio="Este ambiente centraliza os módulos disponíveis para iniciar a experiência, acessar os recursos e percorrer os diferentes caminhos previstos na operação diária do marketplace local."/><div className="grid gap-3 sm:grid-cols-3">{[["Explorar serviços","/app/proximos"],["Registrar serviço","/app/publicar"],["Gerenciar serviços","/app/servicos"]].map(([t,h])=><Link key={t} href={h} onClick={()=>localStorage.setItem("mao-local:boas-vindas","1")} className="superficie rounded-ds-surface p-6 text-center font-medium">{t}</Link>)}</div></div>;return <div><CabecalhoPagina titulo="O que está acontecendo perto de você" apoio="Veja opções de serviço e oportunidades sem precisar começar por uma busca." acao={<Link href="/app/publicar" className="rounded-ds bg-primary px-4 py-2 text-primary-ink">Publicar</Link>}/><div className="mb-8 flex flex-wrap gap-2">{categorias.map(c=><Badge key={c}>{c}</Badge>)}</div><div className="grid gap-3">{d.publicacoes.map(p=><Card key={p.id}><div className="flex flex-wrap items-start justify-between gap-3"><div><div className="flex gap-2"><Badge>{p.categoria}</Badge><Badge>{p.tipo==="contratar"?"Preciso contratar":"Estou disponível"}</Badge></div><h2 className="mt-3 text-lg font-medium">{p.titulo}</h2><p className="mt-1 text-sm text-ink-muted">{p.descricao}</p></div><Link href="/app/chat" className="rounded-ds border border-hairline px-3 py-2 text-sm">Conversar</Link></div></Card>)}</div></div>}
+"use client";
+import Link from "next/link";
+import { useState } from "react";
+import { useRemote, type Publication } from "@/lib/store";
+import { categorias } from "@/lib/modelo";
+import { CabecalhoPagina } from "@/components/app/cabecalho-pagina";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Feedback, PublicationCard } from "@/components/app/marketplace";
+export default function Inicio() {
+  const [city, setCity] = useState(""),
+    [bairro, setBairro] = useState(""),
+    [category, setCategory] = useState(""),
+    [type, setType] = useState(""),
+    [page, setPage] = useState(0);
+  const query =
+    "feed&" +
+    new URLSearchParams({
+      cidade: city,
+      bairro,
+      categoria: category,
+      tipo: type,
+      page: String(page),
+    });
+  const { data, error, loading, refresh } = useRemote<{
+    publicacoes: Publication[];
+    hasMore: boolean;
+  }>(query, { publicacoes: [], hasMore: false });
+  return (
+    <div>
+      <CabecalhoPagina
+        titulo="Encontre quem faz. Publique o que precisa."
+        apoio="Serviços e oportunidades na sua região."
+        acao={<Link href="/app/publicar">Publicar</Link>}
+      />
+      <div className="mb-5 grid gap-3 sm:grid-cols-4">
+        <Input
+          aria-label="Cidade"
+          placeholder="Cidade"
+          value={city}
+          onChange={(e) => {
+            setCity(e.target.value);
+            setPage(0);
+          }}
+        />
+        <Input
+          aria-label="Bairro"
+          placeholder="Bairro"
+          value={bairro}
+          onChange={(e) => {
+            setBairro(e.target.value);
+            setPage(0);
+          }}
+        />
+        <Select
+          aria-label="Categoria"
+          value={category}
+          onChange={(e) => {
+            setCategory(e.target.value);
+            setPage(0);
+          }}
+        >
+          <option value="">Todas as categorias</option>
+          {categorias.map((c) => (
+            <option key={c}>{c}</option>
+          ))}
+        </Select>
+        <Select
+          aria-label="Tipo de publicação"
+          value={type}
+          onChange={(e) => {
+            setType(e.target.value);
+            setPage(0);
+          }}
+        >
+          <option value="">Ofertas e necessidades</option>
+          <option value="disponivel">Oferece serviço</option>
+          <option value="contratar">Precisa contratar</option>
+        </Select>
+      </div>
+      <Feedback error={error} loading={loading} retry={refresh} />
+      <div className="grid gap-3">
+        {!loading && !error && !data.publicacoes.length && (
+          <p>
+            Nenhuma publicação com esses filtros. Ajuste a região ou publique
+            uma necessidade.
+          </p>
+        )}
+        {!error &&
+          data.publicacoes.map((p) => <PublicationCard key={p.id} p={p} />)}
+      </div>
+      <div className="mt-5 flex gap-3">
+        <Button
+          variant="secondary"
+          disabled={page === 0 || loading}
+          onClick={() => setPage((v) => v - 1)}
+        >
+          Anterior
+        </Button>
+        <Button
+          variant="secondary"
+          disabled={!data.hasMore || loading}
+          onClick={() => setPage((v) => v + 1)}
+        >
+          Próxima
+        </Button>
+      </div>
+    </div>
+  );
+}

@@ -1,1 +1,154 @@
-"use client";import {useMemo,useState} from "react";import {useDados} from "@/lib/store";import {CabecalhoPagina} from "@/components/app/cabecalho-pagina";import {Card} from "@/components/ui/card";import {Button} from "@/components/ui/button";import {Badge} from "@/components/ui/badge";function distancia(a:{latitude:number;longitude:number},b:{latitude:number;longitude:number}){const R=6371,rad=(x:number)=>x*Math.PI/180,dlat=rad(b.latitude-a.latitude),dlon=rad(b.longitude-a.longitude),s=Math.sin(dlat/2)**2+Math.cos(rad(a.latitude))*Math.cos(rad(b.latitude))*Math.sin(dlon/2)**2;return 2*R*Math.asin(Math.sqrt(s))}export default function Proximos(){const d=useDados();const [pos,setPos]=useState<{latitude:number;longitude:number}|null>(null),[erro,setErro]=useState("");const lista=useMemo(()=>[...d.profissionais].sort((a,b)=>{if(!pos||!a.localizacao?.latitude||!a.localizacao.longitude||!b.localizacao?.latitude||!b.localizacao.longitude)return 0;return distancia(pos,a.localizacao as any)-distancia(pos,b.localizacao as any)}),[d.profissionais,pos]);function localizar(){navigator.geolocation?.getCurrentPosition(p=>{setErro("");setPos({latitude:p.coords.latitude,longitude:p.coords.longitude})},()=>setErro("Não foi possível usar sua localização. Você ainda pode ver os perfis disponíveis."))}return <div><CabecalhoPagina titulo="Profissionais perto de você" apoio="Use sua localização para priorizar quem estiver mais próximo. Perfis sem localização continuam visíveis, mas não entram no cálculo de distância." acao={<Button onClick={localizar}>Usar minha localização</Button>}/>{erro&&<p role="status" className="mb-4 text-sm text-warning">{erro}</p>}<div className="grid gap-3 md:grid-cols-2">{lista.map(p=><Card key={p.id}><div className="flex items-start justify-between gap-3"><div><h2 className="font-medium">{p.nome}</h2><div className="mt-2 flex flex-wrap gap-2">{p.categorias.map(c=><Badge key={c}>{c}</Badge>)}</div><p className="mt-3 text-sm text-ink-muted">{p.bio}</p>{pos&&p.localizacao?.latitude&&p.localizacao.longitude?<p className="mt-3 text-sm">{distancia(pos,p.localizacao as any).toFixed(1)} km de distância</p>:null}</div><Badge>{p.disponivel?"Disponível":"Indisponível"}</Badge></div></Card>)}</div></div>}
+"use client";
+import Image from "next/image";
+import { distanceKm } from "@/lib/distance";
+import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import Link from "next/link";
+import { useRemote, type Professional } from "@/lib/store";
+import { CabecalhoPagina } from "@/components/app/cabecalho-pagina";
+import { Input } from "@/components/ui/input";
+import { Card } from "@/components/ui/card";
+import { Feedback } from "@/components/app/marketplace";
+export default function Proximos() {
+  const [city, setCity] = useState(""),
+    [bairro, setBairro] = useState(""),
+    [pos, setPos] = useState<{ latitude: number; longitude: number } | null>(
+      null,
+    ),
+    [radius, setRadius] = useState(10),
+    [notice, setNotice] = useState("");
+  function locate() {
+    if (!navigator.geolocation) {
+      setNotice("Localização indisponível. Use cidade e bairro.");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (p) => {
+        setPos({ latitude: p.coords.latitude, longitude: p.coords.longitude });
+        setNotice("Distâncias aproximadas entre regiões.");
+      },
+      () => setNotice("Não foi possível localizar. Use cidade e bairro."),
+      { timeout: 10000 },
+    );
+  }
+  const { data, error, loading, refresh } = useRemote<{
+    profissionais: Professional[];
+  }>("professionals", { profissionais: [] });
+  const list = data.profissionais
+    .filter(
+      (p) =>
+        (!city ||
+          p.cidade.toLocaleLowerCase().includes(city.toLocaleLowerCase())) &&
+        (!bairro ||
+          p.bairro.toLocaleLowerCase().includes(bairro.toLocaleLowerCase())),
+    )
+    .filter(
+      (p) =>
+        !pos ||
+        (p.latitude != null &&
+          p.longitude != null &&
+          distanceKm(pos, { latitude: p.latitude, longitude: p.longitude }) <=
+            radius),
+    )
+    .sort((a, b) =>
+      !pos
+        ? 0
+        : distanceKm(pos, { latitude: a.latitude!, longitude: a.longitude! }) -
+          distanceKm(pos, { latitude: b.latitude!, longitude: b.longitude! }),
+    );
+  return (
+    <div>
+      <CabecalhoPagina
+        titulo="Profissionais na sua região"
+        apoio="Escolha cidade e bairro. A localização exata não é compartilhada."
+      />
+      <div className="mb-5 flex flex-wrap gap-3">
+        <Input
+          aria-label="Cidade"
+          placeholder="Cidade"
+          value={city}
+          onChange={(e) => setCity(e.target.value)}
+        />
+        <Input
+          aria-label="Bairro"
+          placeholder="Bairro"
+          value={bairro}
+          onChange={(e) => setBairro(e.target.value)}
+        />
+        <Button variant="secondary" onClick={locate}>
+          Usar minha localização
+        </Button>
+        {pos && (
+          <>
+            <Input
+              aria-label="Raio em quilômetros"
+              type="number"
+              min="1"
+              max="100"
+              value={radius}
+              onChange={(e) =>
+                setRadius(
+                  Math.max(1, Math.min(100, Number(e.target.value) || 1)),
+                )
+              }
+            />
+            <Button variant="ghost" onClick={() => setPos(null)}>
+              Limpar localização
+            </Button>
+          </>
+        )}
+      </div>
+      {notice && <p role="status">{notice}</p>}
+      <Feedback error={error} loading={loading} retry={refresh} />
+      <div className="grid gap-3 md:grid-cols-2">
+        {!error &&
+          list.map((p) => (
+            <Card key={p.id}>
+              <h2 className="text-lg font-medium">{p.nome}</h2>
+              <p>
+                {p.categoria} · {p.bairro}, {p.cidade}
+              </p>
+              <p className="mt-3 whitespace-pre-wrap">{p.bio}</p>
+              {pos && p.latitude != null && p.longitude != null && (
+                <p>
+                  Aproximadamente{" "}
+                  {distanceKm(pos, {
+                    latitude: p.latitude,
+                    longitude: p.longitude,
+                  }).toFixed(1)}{" "}
+                  km
+                </p>
+              )}
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                {p.images.map((url) => (
+                  <Image
+                    unoptimized
+                    width={800}
+                    height={600}
+                    key={url}
+                    src={url}
+                    alt="Trabalho do profissional"
+                    className="rounded-ds"
+                  />
+                ))}
+              </div>
+              {p.portfolio && (
+                <p className="mt-3 whitespace-pre-wrap">
+                  Trabalho realizado: {p.portfolio}
+                </p>
+              )}
+              <Link className="mt-3 inline-block underline" href="/app/inicio">
+                Encontrar ofertas e conversar
+              </Link>
+            </Card>
+          ))}
+      </div>
+      {!loading && !error && !list.length && (
+        <p>
+          Nenhum perfil nessa região. Ajuste o filtro ou publique sua
+          necessidade.
+        </p>
+      )}
+    </div>
+  );
+}

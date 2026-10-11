@@ -6,8 +6,15 @@ export async function GET(req: Request) {
   const authSecret = process.env.AUTH_SECRET;
   const url = new URL(req.url);
 
-  if (!clientId || !authSecret) {
-    return NextResponse.redirect(new URL("/entrar?erro=google-nao-configurado", url.origin));
+  if (
+    !clientId ||
+    !authSecret ||
+    !process.env.GOOGLE_CLIENT_SECRET ||
+    !process.env.DATABASE_URL
+  ) {
+    return NextResponse.redirect(
+      new URL("/entrar?erro=google-nao-configurado", url.origin),
+    );
   }
 
   const state = crypto.randomUUID();

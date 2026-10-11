@@ -42,3 +42,14 @@ npx vercel --prod --yes
 
 
 Deploy automático: Vercel conectado ao branch `main`.
+
+## Marketplace com dados persistentes
+
+Consulte [docs/IMPLEMENTACAO.md](docs/IMPLEMENTACAO.md) para configuração do Neon, Google, fotos e moderação. O acesso local demonstrativo foi substituído por navegação visitante; operações de escrita exigem conta Google válida. Sem DATABASE_URL, a interface informa que o serviço está em configuração.
+
+```bash
+npm run db:migrate
+npm test
+npm run lint
+npm run build
+```

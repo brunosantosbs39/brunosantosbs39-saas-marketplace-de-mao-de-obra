@@ -1,3 +1,4 @@
+import { getDb } from "@/lib/marketplace-server";
 import { NextResponse } from "next/server";
 import {
   criarCookieSessao,
@@ -18,13 +19,17 @@ export async function GET(req: Request) {
     ?.slice(nomeCookieOAuthState.length + 1);
 
   if (erroGoogle || !code || !state || !stateCookie || state !== stateCookie) {
-    return NextResponse.redirect(new URL("/entrar?erro=google-cancelado", url.origin));
+    return NextResponse.redirect(
+      new URL("/entrar?erro=google-cancelado", url.origin),
+    );
   }
 
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
   if (!clientId || !clientSecret || !process.env.AUTH_SECRET) {
-    return NextResponse.redirect(new URL("/entrar?erro=google-nao-configurado", url.origin));
+    return NextResponse.redirect(
+      new URL("/entrar?erro=google-nao-configurado", url.origin),
+    );
   }
 
   try {
@@ -45,19 +50,30 @@ export async function GET(req: Request) {
     if (!tokenResponse.ok) throw new Error("Falha ao trocar código OAuth");
     const tokens = await tokenResponse.json();
 
-    const userResponse = await fetch("https://openidconnect.googleapis.com/v1/userinfo", {
-      headers: { Authorization: `Bearer ${tokens.access_token}` },
-      cache: "no-store",
-    });
+    const userResponse = await fetch(
+      "https://openidconnect.googleapis.com/v1/userinfo",
+      {
+        headers: { Authorization: `Bearer ${tokens.access_token}` },
+        cache: "no-store",
+      },
+    );
     if (!userResponse.ok) throw new Error("Falha ao carregar perfil Google");
 
     const user = await userResponse.json();
+    if (!user.sub || !user.email || !user.email_verified)
+      throw new Error("Identidade Google inválida");
+    const sql = getDb();
+    const accounts =
+      await sql`INSERT INTO ml_accounts(google_sub,name,email) VALUES(${user.sub},${user.name || user.email},${user.email}) ON CONFLICT(google_sub) DO UPDATE SET email=excluded.email RETURNING id`;
     const tokenSessao = await criarCookieSessao({
+      id: accounts[0].id,
       nome: user.name || user.email || "Usuário Google",
       email: user.email,
     });
 
-    const response = NextResponse.redirect(new URL("/entrar?google=sucesso", url.origin));
+    const response = NextResponse.redirect(
+      new URL("/entrar?google=sucesso", url.origin),
+    );
     response.cookies.set(nomeCookieSessao, tokenSessao, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -68,6 +84,8 @@ export async function GET(req: Request) {
     response.cookies.delete(nomeCookieOAuthState);
     return response;
   } catch {
-    return NextResponse.redirect(new URL("/entrar?erro=google-falhou", url.origin));
+    return NextResponse.redirect(
+      new URL("/entrar?erro=google-falhou", url.origin),
+    );
   }
 }
