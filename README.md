@@ -1,44 +1,36 @@
 # Mão Local
 
-SaaS Marketplace de Mão de Obra Local para aproximar contratantes e profissionais/autônomos por disponibilidade, proximidade, publicação, perfil e chat.
+Marketplace de mão de obra local: a mesma conta pode publicar oferta ou necessidade, encontrar profissionais, conversar e acompanhar o serviço. Google identifica a conta; Neon PostgreSQL mantém os dados; fotos usam Vercel Blob. Visitantes podem explorar conteúdo público.
 
-## Rodar
+## Desenvolvimento e verificação
 
 ```bash
-npm install
+npm ci --ignore-scripts
+npm run db:migrate
 npm run dev
 ```
 
-## Catálogo de componentes
+Configurar primeiro as variáveis de um ambiente de desenvolvimento isolado. Sem DATABASE_URL, a interface apresenta indisponibilidade; não grava dados fictícios no navegador.
 
 ```bash
-npm run storybook
-```
-
-Abre em `http://localhost:6006`.
-
-## Publicar
-
-```bash
+npm test
+npm run lint
 npm run build
-npx vercel --prod --yes
+npm run build-storybook
 ```
 
-## Como ligar depois
+Storybook: npm run storybook (porta 6006). Identidade e primitivos existentes preservados; n8n continua preparado, sem notificações externas ligadas.
 
-- Google: preencha `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` e `AUTH_SECRET` em `.env.local`.
-- Neon: preencha `DATABASE_URL` em `.env.local`.
-- OpenAI, WhatsApp, e-mail e n8n: use os espaços já descritos em `.env.example` e `n8n/`.
+## Configuração e liberação
 
-## Estrutura
+[Implementação atual](docs/IMPLEMENTACAO.md) · [Requisitos e aceite](docs/01-PRD.md) · [Correções e evidência](docs/CORRECOES-PR1.md) · [Operação](docs/OPERACAO.md) · [Gates de liberação](docs/06-PLANO.md).
 
-- `src/app`: site, entrada, produto, guia e rotas de servidor.
-- `src/components/ui`: primitivos acessíveis.
-- `src/components/app`: casca e componentes do produto.
-- `src/components/marketing`: dobras do site.
-- `src/lib`: tipos, modelo, dados, store, design system e capacidades de backend.
-- `.storybook`: catálogo de componentes.
-- `n8n`: automações preparadas.
+Configurar DATABASE_URL, AUTH_SECRET, GOOGLE_CLIENT_ID/SECRET e callback por ambiente. Para fotos, BLOB_READ_WRITE_TOKEN; para operação, MODERATOR_EMAILS e SUPPORT_EMAIL real. Nunca colocar segredos em Git ou no navegador.
 
+Aplicar migrations 001/002 antes da versão corrigida. O push desta branch pode gerar preview pelo Git; não aplica migrations ou promove produção. Validar Google/Neon/Blob reais e gates operacionais antes do merge/promoção. CI deve ser obrigatório; não presumir que um workflow sozinho bloqueia o deploy automático de main.
 
-Deploy automático: Vercel conectado ao branch `main`.
+## Limites
+
+Fotos: até 10 por perfil, 4 MB cada. Descoberta filtrada/paginada no servidor; mensagens com histórico paginado. Até 100 anúncios próprios e conversas recentes. Coordenadas são aproximadas; não há rotas, rastreamento, despacho, pagamento, verificação de habilitação ou garantia do trabalho.
+
+Favoritos, avaliações, agenda, notificações externas, múltiplos projetos/categorias e automações comerciais não estão disponíveis nesta versão.

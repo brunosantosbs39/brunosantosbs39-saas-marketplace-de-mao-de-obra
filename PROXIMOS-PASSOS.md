@@ -1,8 +1,7 @@
-# Próximos passos
+# Próximos passos para liberação
 
-1. Ligar login real com Google preenchendo as chaves do `.env.local`.
-2. Ligar Neon com `DATABASE_URL`.
-3. Conectar e-mail, WhatsApp e n8n para avisos de oportunidade e confirmação de serviço.
-4. Criar a rota da OpenAI no servidor quando houver uma funcionalidade de IA realmente pedida.
-5. Publicar o Storybook para usar o design system como entregável.
-6. Conectar o MCP do Figma para evoluir os componentes com o catálogo isolado.
+1. Recuperar acesso à equipe correta da Vercel; consulta retornou 403.
+2. Configurar homologação isolada e variáveis de Google/Neon/Blob, moderação e suporte, sem colocar segredos em Git.
+3. Aplicar migrations 001/002 e exercitar provedores reais com A/B/C.
+4. Validar política de retenção, rotina de mídia, restauração, rollback, alertas e checks obrigatórios.
+5. Promover produção somente após os gates de docs/06-PLANO.md. Nenhuma ativação externa foi declarada concluída nesta correção.
