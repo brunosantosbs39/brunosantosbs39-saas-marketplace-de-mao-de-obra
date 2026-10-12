@@ -1,7 +1,8 @@
 "use client";
 import Image from "next/image";
 import { useState } from "react";
-import { request, useRemote } from "@/lib/store";
+import { request, useRemote, responseData } from "@/lib/store";
+import { MAX_PHOTO_BYTES } from "@/lib/media-limits";
 import { categorias } from "@/lib/modelo";
 import { CabecalhoPagina } from "@/components/app/cabecalho-pagina";
 import { Button } from "@/components/ui/button";
@@ -20,10 +21,16 @@ type Profile = {
   latitude: number | null;
   longitude: number | null;
   images: string[];
+  raioAtendimento: number;
+  hidden: boolean;
 };
 export default function Perfil() {
-  const remote = useRemote<{ perfil: Profile | null }>("profile", {
+  const remote = useRemote<{
+    perfil: Profile | null;
+    midias: { url: string }[];
+  }>("profile", {
     perfil: null,
+    midias: [],
   });
   return (
     <div>
@@ -37,13 +44,25 @@ export default function Perfil() {
         retry={remote.refresh}
       />
       {remote.data.perfil && !remote.error && (
-        <ProfileForm initial={remote.data.perfil} />
+        <ProfileForm
+          initial={remote.data.perfil}
+          pending={remote.data.midias.filter(
+            (m) => !remote.data.perfil!.images.includes(m.url),
+          )}
+        />
       )}
     </div>
   );
 }
-function ProfileForm({ initial }: { initial: Profile }) {
+function ProfileForm({
+  initial,
+  pending,
+}: {
+  initial: Profile;
+  pending: { url: string }[];
+}) {
   const [form, setForm] = useState(initial),
+    [pendingMedia, setPendingMedia] = useState(pending.map((m) => m.url)),
     [busy, setBusy] = useState(false),
     [notice, setNotice] = useState("");
   async function remove(url: string) {
@@ -54,9 +73,10 @@ function ProfileForm({ initial }: { initial: Profile }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url }),
       });
-      const data = await res.json();
+      const data = await responseData(res);
       if (!res.ok) throw new Error(data.error);
       setForm((f) => ({ ...f, images: f.images.filter((x) => x !== url) }));
+      setPendingMedia((v) => v.filter((x) => x !== url));
       setNotice("Foto removida.");
     } catch (e) {
       setNotice((e as Error).message);
@@ -65,12 +85,16 @@ function ProfileForm({ initial }: { initial: Profile }) {
     }
   }
   async function upload(file: File) {
+    if (file.size > MAX_PHOTO_BYTES) {
+      setNotice("A foto deve ter até 4 MB.");
+      return;
+    }
     setBusy(true);
     try {
       const fd = new FormData();
       fd.set("file", file);
       const res = await fetch("/api/portfolio", { method: "POST", body: fd });
-      const data = await res.json();
+      const data = await responseData(res);
       if (!res.ok) throw new Error(data.error);
       setForm((f) => ({ ...f, images: [...f.images, data.url] }));
       setNotice("Foto enviada. Salve o perfil para publicá-la.");
@@ -164,6 +188,24 @@ function ProfileForm({ initial }: { initial: Profile }) {
             />
           </Campo>
         ))}
+        {initial.hidden && (
+          <p role="alert">
+            Seu perfil está oculto após moderação. Entre em contato com o
+            suporte.
+          </p>
+        )}
+        <Campo id="raio" rotulo="Raio de atendimento em km">
+          <Input
+            id="raio"
+            type="number"
+            min={1}
+            max={100}
+            value={form.raioAtendimento}
+            onChange={(e) =>
+              setForm({ ...form, raioAtendimento: Number(e.target.value) })
+            }
+          />
+        </Campo>
         <Button type="button" variant="secondary" onClick={locate}>
           Adicionar localização aproximada
         </Button>
@@ -184,13 +226,13 @@ function ProfileForm({ initial }: { initial: Profile }) {
         <Campo
           id="fotos"
           rotulo="Fotos dos seus trabalhos"
-          ajuda="Até 10 fotos JPG, PNG ou WebP de 5 MB. Não inclua clientes ou endereços."
+          ajuda="Até 10 fotos JPG, PNG ou WebP de 4 MB. Não inclua clientes ou endereços."
         >
           <Input
             id="fotos"
             type="file"
             accept="image/jpeg,image/png,image/webp"
-            disabled={busy || form.images.length >= 10}
+            disabled={busy || form.images.length + pendingMedia.length >= 10}
             onChange={(e) => {
               const file = e.target.files?.[0];
               if (file) void upload(file);
@@ -220,6 +262,44 @@ function ProfileForm({ initial }: { initial: Profile }) {
             </div>
           ))}
         </div>
+        {pendingMedia.length > 0 && (
+          <section>
+            <h2>Fotos enviadas ainda não publicadas</h2>
+            <p>
+              Adicione ao perfil ou remova para liberar espaço. Fotos não usadas
+              são limpas após 24 horas.
+            </p>
+            {pendingMedia.map((url) => (
+              <div key={url}>
+                <Image
+                  unoptimized
+                  width={400}
+                  height={300}
+                  src={url}
+                  alt="Foto ainda não publicada"
+                />
+                <Button
+                  type="button"
+                  disabled={busy || form.images.includes(url)}
+                  onClick={() => {
+                    setForm((f) => ({ ...f, images: [...f.images, url] }));
+                    setPendingMedia((v) => v.filter((x) => x !== url));
+                  }}
+                >
+                  Adicionar ao perfil
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  disabled={busy}
+                  onClick={() => void remove(url)}
+                >
+                  Excluir foto
+                </Button>
+              </div>
+            ))}
+          </section>
+        )}
         <Button disabled={busy} type="submit">
           {busy ? "Salvando…" : "Salvar perfil"}
         </Button>

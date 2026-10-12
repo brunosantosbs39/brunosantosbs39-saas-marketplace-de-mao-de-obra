@@ -18,7 +18,10 @@ export default function Chat() {
     [text, setText] = useState(""),
     [key, setKey] = useState(""),
     [busy, setBusy] = useState(false),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    [older, setOlder] = useState<Message[]>([]),
+    [cursor, setCursor] = useState<string | null>(null),
+    [historyBusy, setHistoryBusy] = useState(false);
   const search = useURLSearch(),
     selected = chosen ?? new URLSearchParams(search).get("id") ?? "";
   const list = useRemote<{ conversas: Conversation[] }>(
@@ -26,9 +29,13 @@ export default function Chat() {
     { conversas: [] },
     5000,
   );
-  const messages = useRemote<{ mensagens: Message[] }>(
+  const messages = useRemote<{
+    mensagens: Message[];
+    nextCursor: string | null;
+    hasMore: boolean;
+  }>(
     selected ? "messages&id=" + selected : "",
-    { mensagens: [] },
+    { mensagens: [], nextCursor: null, hasMore: false },
     selected ? 3000 : 0,
   );
   const current = list.data.conversas.find((c) => c.id === selected);
@@ -85,12 +92,15 @@ export default function Chat() {
           {list.data.conversas.map((c) => (
             <Button
               key={c.id}
+              disabled={busy || historyBusy}
               variant={selected === c.id ? "primary" : "secondary"}
               onClick={() => {
                 setSelected(c.id);
                 setError("");
                 setText("");
                 setKey("");
+                setOlder([]);
+                setCursor(null);
               }}
             >
               {c.contato}: {c.titulo}
@@ -109,6 +119,42 @@ export default function Chat() {
               <Button variant="ghost" onClick={block}>
                 Bloquear contato
               </Button>
+              {current.somenteLeitura && (
+                <p role="status">
+                  Conversa somente para leitura: anúncio removido ou conta
+                  indisponível.
+                </p>
+              )}
+              {(cursor || (!older.length && messages.data.nextCursor)) && (
+                <Button
+                  variant="secondary"
+                  disabled={historyBusy}
+                  onClick={async () => {
+                    setHistoryBusy(true);
+                    try {
+                      const r = await request<{
+                        mensagens: Message[];
+                        nextCursor: string | null;
+                      }>(
+                        "messages&id=" +
+                          selected +
+                          "&cursor=" +
+                          encodeURIComponent(
+                            cursor || messages.data.nextCursor!,
+                          ),
+                      );
+                      setOlder((v) => [...r.mensagens, ...v]);
+                      setCursor(r.nextCursor);
+                    } catch (e) {
+                      setError((e as Error).message);
+                    } finally {
+                      setHistoryBusy(false);
+                    }
+                  }}
+                >
+                  Carregar mensagens anteriores
+                </Button>
+              )}
               {current.bloqueada && (
                 <p role="status">Conversa bloqueada para envio.</p>
               )}
@@ -122,35 +168,69 @@ export default function Chat() {
                 aria-label="Mensagens"
               >
                 {!messages.error &&
-                  messages.data.mensagens.map((m) => (
-                    <div
-                      key={m.id}
-                      className={
-                        "rounded-ds border border-hairline p-3 " +
-                        (m.autorId === session?.id ? "ml-8" : "mr-8")
-                      }
-                    >
-                      <p className="whitespace-pre-wrap">{m.texto}</p>
-                      <small className="text-ink-muted">
-                        {m.autorId === session?.id ? "Você · " : ""}
-                        {new Date(m.criadoEm).toLocaleString("pt-BR")}
-                      </small>
-                    </div>
-                  ))}
+                  [...older, ...messages.data.mensagens]
+                    .filter(
+                      (m, i, all) => all.findIndex((v) => v.id === m.id) === i,
+                    )
+                    .map((m) => (
+                      <div
+                        key={m.id}
+                        className={
+                          "rounded-ds border border-hairline p-3 " +
+                          (m.autorId === session?.id ? "ml-8" : "mr-8")
+                        }
+                      >
+                        <p className="whitespace-pre-wrap">{m.texto}</p>
+                        {!m.removed && m.autorId !== session?.id && (
+                          <Button
+                            variant="ghost"
+                            onClick={async () => {
+                              const reason = window.prompt(
+                                "Motivo da denúncia (mínimo 5 caracteres).",
+                              );
+                              if (!reason) return;
+                              try {
+                                await request("report", {
+                                  targetType: "message",
+                                  targetId: m.id,
+                                  reason,
+                                });
+                                setError("Denúncia registrada.");
+                              } catch (e) {
+                                setError((e as Error).message);
+                              }
+                            }}
+                          >
+                            Denunciar mensagem
+                          </Button>
+                        )}
+                        <small className="text-ink-muted">
+                          {m.autorId === session?.id ? "Você · " : ""}
+                          {new Date(m.criadoEm).toLocaleString("pt-BR")}
+                        </small>
+                      </div>
+                    ))}
               </div>
               <form onSubmit={send} className="flex gap-2">
                 <Input
                   aria-label="Mensagem"
                   maxLength={2000}
                   value={text}
-                  disabled={busy || current.bloqueada}
+                  disabled={busy || current.bloqueada || current.somenteLeitura}
                   onChange={(e) => {
                     setText(e.target.value);
                     setKey("");
+                    setOlder([]);
+                    setCursor(null);
                   }}
                 />
                 <Button
-                  disabled={busy || current.bloqueada || !text.trim()}
+                  disabled={
+                    busy ||
+                    current.bloqueada ||
+                    current.somenteLeitura ||
+                    !text.trim()
+                  }
                   type="submit"
                 >
                   {busy ? "Enviando…" : key ? "Tentar enviar" : "Enviar"}

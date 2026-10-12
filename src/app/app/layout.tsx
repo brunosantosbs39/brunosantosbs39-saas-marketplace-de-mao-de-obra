@@ -21,6 +21,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             tabIndex={-1}
             className="mx-auto max-w-6xl p-4 pb-24 sm:p-6 md:pb-6"
           >
+            <nav
+              aria-label="Mais opções"
+              className="mb-4 flex flex-wrap gap-4 md:hidden"
+            >
+              <Link className="underline" href="/app/servicos">
+                Serviços
+              </Link>
+              <Link className="underline" href="/app/configuracoes">
+                Configurações
+              </Link>
+            </nav>
             {children}
           </main>
         </div>

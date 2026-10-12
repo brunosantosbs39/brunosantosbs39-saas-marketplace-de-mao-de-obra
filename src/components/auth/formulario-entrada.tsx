@@ -23,9 +23,14 @@ export function FormularioEntrada() {
           let target = "/app/inicio";
           try {
             const saved = sessionStorage.getItem("ml:return");
+            const owner = sessionStorage.getItem("ml:returnOwner");
+            if (owner && owner !== d.sessao.id) {
+              sessionStorage.removeItem("ml:publicationDraft");
+            }
             if (saved?.startsWith("/app/") && !saved.includes("\\"))
               target = saved;
             sessionStorage.removeItem("ml:return");
+            sessionStorage.removeItem("ml:returnOwner");
           } catch {}
           location.replace(target);
         })

@@ -1,41 +1,27 @@
-# Implementação do marketplace
+# Implementação atual do Mão Local
 
-Esta descrição representa a implementação atual e prevalece sobre hipóteses e status anteriores dos seis documentos de planejamento.
+Atualizado em 12/10/2026 após auditoria do PR #1. Esta descrição, AGENTS.md e a matriz RF de 01-PRD.md representam o código atual; propostas antigas não definem recursos disponíveis.
 
 ## Implementado
-- Navegação visitante sem sessão fictícia; Google cria conta persistente identificada por sub do provedor.
-- Sessão HttpOnly assinada e validada no servidor; sessões locais antigas não autorizam operações.
-- Neon PostgreSQL: migrations idempotentes, publicações, perfis, conversas, mensagens, bloqueios e denúncias.
-- Publicação com titular, categoria, descrição, cidade/bairro, preço/unidade, período, revisão e chave de idempotência.
-- Busca pública por cidade, bairro, categoria e tipo com páginas de 20 registros; expiradas não aparecem.
-- Gerenciamento apenas do titular: pausa, ativação e finalização com versão de edição concorrente.
-- Interesse cria conversa específica da publicação; somente participantes leem/enviam mensagens. Retry não duplica mensagem. Atualização por consulta periódica, sem WebSocket.
-- Bloqueio bilateral, limites de solicitação e moderação de denúncias com motivo e responsável registrados.
-- Perfil salvo no servidor e carregado para edição; localização pública arredondada a duas casas decimais e busca por raio aproximado. Cidade/bairro continuam como alternativa sem GPS.
-- Portfólio com fotos via Vercel Blob; validação de bytes, reencodificação WebP, limite de dimensões, remoção de EXIF e exclusão pelo titular. Foto publicada deve ter registro de propriedade.
-- Visual existente e Storybook/n8n preservados; navegação mobile adicionada. Dados de exemplo não substituem banco real.
 
-## Ativação
-1. Configurar DATABASE_URL, AUTH_SECRET, GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET no ambiente desejado.
-2. Executar npm run db:migrate com DATABASE_URL desse ambiente. A migration cria tabelas ml_* e não altera tabelas legadas.
-3. Registrar no Google o callback HTTPS: <origem>/api/auth/callback.
-4. Para fotos, conectar um Vercel Blob público e configurar BLOB_READ_WRITE_TOKEN. Sem esse token, perfil textual funciona e envio mostra indisponibilidade.
-5. Configurar MODERATOR_EMAILS com e-mails Google verificados dos responsáveis, separados por vírgula. Sem configuração, ninguém acessa /app/moderacao.
-6. Rodar npm test, npm run lint, npm run build e npm run build-storybook.
-7. Em homologação, testar Google e duas contas em navegadores independentes antes de produção.
+Google sub persistente, e-mail verificado e sessão HttpOnly assinada com versão de revogação. Visitante explora; publicar/conversar exige conta ativa. Neon mantém publicações, perfis, conversas, mensagens, serviço pendente/finalizado, bloqueios, denúncias, decisões imutáveis e solicitações de exclusão.
 
-Nunca colocar credenciais em Git. AUTH_SECRET deve ser aleatório e forte. Script de migration lê .env.local quando presente. Banco e buckets de teste devem ser separados de produção.
+Ofertas/demandas têm valor em centavos ou a combinar, unidade, período, região, coordenadas aproximadas opcionais e revisão. Autor edita/renova/pausa/encerra com controle de versão; expiração exclui do feed. Encerrar anúncio não marca serviço executado.
 
-## Limites explícitos
-Ainda não há recuperação por e-mail/senha, avaliações, pagamentos, agenda, notificações externas, consulta geográfica indexada/PostGIS, vários projetos de portfólio ou automações n8n ligadas. A busca de profissionais recebe até 100 perfis e calcula distâncias aproximadas no navegador; deve migrar para paginação/busca geográfica no servidor antes de crescer. Conversas exibem as 100 mensagens mais recentes. Fotos antigas enviadas mas não adicionadas ao perfil contam no limite; a exclusão libera espaço. Endereços e textos privados digitados espontaneamente em chat ficam sob responsabilidade de compartilhamento das partes.
+Feed e profissionais filtram no SQL antes de páginas de 20. GPS/raio opcionais, alternativa cidade/bairro, categoria, tipo, unidade/preço e período; cursors preservam precisão de timestamps. Perfil público por ID lista ofertas dessa conta. Histórico de mensagens é paginado em lotes de 100. Participação e bloqueio verificados no servidor; suspensão/remoção tornam chat somente leitura.
 
-Esta branch não aplica migrations no ambiente remoto nem faz deploy de produção. O projeto da Vercel consultado não tinha variáveis cadastradas; o fluxo real depende da ativação acima. Não existe fallback que aceite gravar dados só no navegador.
+Bloqueio oculta resultados entre contas autenticadas e permite desbloqueio; não torna conteúdo público privado para visitante. Denúncias de anúncio/perfil/mensagem são deduplicadas; moderador sem participação decide com contexto mínimo e motivo. Histórico não sobrescreve decisões; suspensão/reativação registrada.
 
-## Evidências desta entrega
+Fotos Vercel Blob até 4 MB, 10 por perfil; bytes/pixels validados, WebP sem EXIF. Vagas reservadas no banco, uploads não salvos recuperáveis no editor, exclusões em fila. media:cleanup reconcilia falhas e órfãos; executar no ambiente correto. Perfis textuais funcionam sem Blob.
 
-- npm test: quatro testes aprovados; incluem APIs com três contas em PostgreSQL embarcado/PGlite, migration reaplicada, idempotência, bloqueio, expiração, perfil, moderação, limite de uso, imagem sem EXIF, distância e tamanho de requisição.
-- npm run lint: aprovado.
-- npm run build: aprovado com 22 rotas/páginas.
-- npm run build-storybook: aprovado; aviso de tamanho de chunks do catálogo.
-- Nenhum fluxo real com Google, Neon remoto ou Blob foi declarado validado. O ambiente remoto consultado não tinha variáveis cadastradas.
-- Testes não substituem homologação de OAuth, upload externo, concorrência entre instâncias e revisão visual no navegador.
+Solicitar exclusão exige EXCLUIR, gera protocolo, oculta conta e impede contatos imediatamente, revoga sessão. Suporte processa retirada definitiva; não há prazo automático ou política de retenção inventada.
+
+## Ativação e evidência
+
+npm run db:migrate aplica migrations 001/002 antes desta versão. Configurar variáveis/callback por ambiente conforme 06-PLANO.md. SUPPORT_EMAIL deve ser real, e MODERATOR_EMAILS deve ter cobertura de revisão imparcial.
+
+Resultados, testes e limites da verificação em CORRECOES-PR1.md. Google/Neon/Blob reais e operação/rollback ainda precisam homologação; acesso à equipe Vercel retornou 403. CI está no repositório; tornar checks obrigatórios exige configuração remota.
+
+## Limites atuais
+
+Uma categoria/trabalho textual por perfil; até 100 publicações próprias e conversas recentes. Sem PostGIS/índice geográfico especializado; distância aproximada calculada no SQL e sem teste de carga real. Coordenadas arredondadas não são anonimização. Sem avaliação, pagamento, agenda, favoritos, notificações externas ou automação n8n efetiva. Storybook/n8n/identidade existentes preservados.

@@ -1,22 +1,45 @@
 "use client";
 import Image from "next/image";
-import { distanceKm } from "@/lib/distance";
-import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import Link from "next/link";
-import { useRemote, type Professional } from "@/lib/store";
-import { CabecalhoPagina } from "@/components/app/cabecalho-pagina";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Feedback } from "@/components/app/marketplace";
+import { CabecalhoPagina } from "@/components/app/cabecalho-pagina";
+import { useRemote, type Professional } from "@/lib/store";
+import { categorias } from "@/lib/modelo";
 export default function Proximos() {
   const [city, setCity] = useState(""),
     [bairro, setBairro] = useState(""),
+    [category, setCategory] = useState(""),
     [pos, setPos] = useState<{ latitude: number; longitude: number } | null>(
       null,
     ),
     [radius, setRadius] = useState(10),
-    [notice, setNotice] = useState("");
+    [notice, setNotice] = useState(""),
+    [cursors, setCursors] = useState<string[]>([]);
+  const params = new URLSearchParams({
+    cidade: city,
+    bairro,
+    categoria: category,
+  });
+  if (pos) {
+    params.set("lat", String(pos.latitude));
+    params.set("lng", String(pos.longitude));
+    params.set("radius", String(radius));
+  }
+  if (cursors.length) params.set("cursor", cursors[cursors.length - 1]);
+  const remote = useRemote<{
+    profissionais: Professional[];
+    hasMore: boolean;
+    nextCursor: string | null;
+  }>("professionals&" + params, {
+    profissionais: [],
+    hasMore: false,
+    nextCursor: null,
+  });
   function locate() {
     if (!navigator.geolocation) {
       setNotice("Localização indisponível. Use cidade e bairro.");
@@ -25,56 +48,51 @@ export default function Proximos() {
     navigator.geolocation.getCurrentPosition(
       (p) => {
         setPos({ latitude: p.coords.latitude, longitude: p.coords.longitude });
+        setCursors([]);
         setNotice("Distâncias aproximadas entre regiões.");
       },
       () => setNotice("Não foi possível localizar. Use cidade e bairro."),
       { timeout: 10000 },
     );
   }
-  const { data, error, loading, refresh } = useRemote<{
-    profissionais: Professional[];
-  }>("professionals", { profissionais: [] });
-  const list = data.profissionais
-    .filter(
-      (p) =>
-        (!city ||
-          p.cidade.toLocaleLowerCase().includes(city.toLocaleLowerCase())) &&
-        (!bairro ||
-          p.bairro.toLocaleLowerCase().includes(bairro.toLocaleLowerCase())),
-    )
-    .filter(
-      (p) =>
-        !pos ||
-        (p.latitude != null &&
-          p.longitude != null &&
-          distanceKm(pos, { latitude: p.latitude, longitude: p.longitude }) <=
-            radius),
-    )
-    .sort((a, b) =>
-      !pos
-        ? 0
-        : distanceKm(pos, { latitude: a.latitude!, longitude: a.longitude! }) -
-          distanceKm(pos, { latitude: b.latitude!, longitude: b.longitude! }),
-    );
   return (
     <div>
       <CabecalhoPagina
         titulo="Profissionais na sua região"
-        apoio="Escolha cidade e bairro. A localização exata não é compartilhada."
+        apoio="Busque por categoria e região. As distâncias são aproximadas."
       />
-      <div className="mb-5 flex flex-wrap gap-3">
+      <div className="mb-5 grid gap-3 sm:grid-cols-3">
         <Input
           aria-label="Cidade"
           placeholder="Cidade"
           value={city}
-          onChange={(e) => setCity(e.target.value)}
+          onChange={(e) => {
+            setCity(e.target.value);
+            setCursors([]);
+          }}
         />
         <Input
           aria-label="Bairro"
           placeholder="Bairro"
           value={bairro}
-          onChange={(e) => setBairro(e.target.value)}
+          onChange={(e) => {
+            setBairro(e.target.value);
+            setCursors([]);
+          }}
         />
+        <Select
+          aria-label="Categoria"
+          value={category}
+          onChange={(e) => {
+            setCategory(e.target.value);
+            setCursors([]);
+          }}
+        >
+          <option value="">Todas as categorias</option>
+          {categorias.map((c) => (
+            <option key={c}>{c}</option>
+          ))}
+        </Select>
         <Button variant="secondary" onClick={locate}>
           Usar minha localização
         </Button>
@@ -83,41 +101,52 @@ export default function Proximos() {
             <Input
               aria-label="Raio em quilômetros"
               type="number"
-              min="1"
-              max="100"
+              min={1}
+              max={100}
               value={radius}
-              onChange={(e) =>
+              onChange={(e) => {
                 setRadius(
                   Math.max(1, Math.min(100, Number(e.target.value) || 1)),
-                )
-              }
+                );
+                setCursors([]);
+              }}
             />
-            <Button variant="ghost" onClick={() => setPos(null)}>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setPos(null);
+                setCursors([]);
+              }}
+            >
               Limpar localização
             </Button>
           </>
         )}
       </div>
       {notice && <p role="status">{notice}</p>}
-      <Feedback error={error} loading={loading} retry={refresh} />
+      <Feedback
+        error={remote.error}
+        loading={remote.loading}
+        retry={remote.refresh}
+      />
       <div className="grid gap-3 md:grid-cols-2">
-        {!error &&
-          list.map((p) => (
+        {!remote.error &&
+          remote.data.profissionais.map((p) => (
             <Card key={p.id}>
-              <h2 className="text-lg font-medium">{p.nome}</h2>
+              <h2 className="text-lg font-medium">
+                <Link
+                  className="underline"
+                  href={"/app/profissional?id=" + p.id}
+                >
+                  {p.nome}
+                </Link>
+              </h2>
               <p>
                 {p.categoria} · {p.bairro}, {p.cidade}
               </p>
               <p className="mt-3 whitespace-pre-wrap">{p.bio}</p>
-              {pos && p.latitude != null && p.longitude != null && (
-                <p>
-                  Aproximadamente{" "}
-                  {distanceKm(pos, {
-                    latitude: p.latitude,
-                    longitude: p.longitude,
-                  }).toFixed(1)}{" "}
-                  km
-                </p>
+              {p.distancia != null && (
+                <p>Aproximadamente {Number(p.distancia).toFixed(1)} km</p>
               )}
               <div className="mt-3 grid grid-cols-2 gap-2">
                 {p.images.map((url) => (
@@ -132,23 +161,42 @@ export default function Proximos() {
                   />
                 ))}
               </div>
-              {p.portfolio && (
-                <p className="mt-3 whitespace-pre-wrap">
-                  Trabalho realizado: {p.portfolio}
-                </p>
-              )}
-              <Link className="mt-3 inline-block underline" href="/app/inicio">
-                Encontrar ofertas e conversar
+              <Link
+                className="mt-3 inline-block underline"
+                href={"/app/profissional?id=" + p.id}
+              >
+                Ver perfil e ofertas
               </Link>
             </Card>
           ))}
       </div>
-      {!loading && !error && !list.length && (
-        <p>
-          Nenhum perfil nessa região. Ajuste o filtro ou publique sua
-          necessidade.
-        </p>
-      )}
+      {!remote.loading &&
+        !remote.error &&
+        !remote.data.profissionais.length && (
+          <p>
+            Nenhum perfil nessa região. Ajuste o filtro ou publique sua
+            necessidade.
+          </p>
+        )}
+      <div className="mt-5 flex gap-3">
+        <Button
+          variant="secondary"
+          disabled={!cursors.length || remote.loading}
+          onClick={() => setCursors((c) => c.slice(0, -1))}
+        >
+          Anterior
+        </Button>
+        <Button
+          variant="secondary"
+          disabled={!remote.data.nextCursor || remote.loading}
+          onClick={() => {
+            if (remote.data.nextCursor)
+              setCursors((c) => [...c, remote.data.nextCursor!]);
+          }}
+        >
+          Próxima
+        </Button>
+      </div>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
-import { useRemote, type Publication } from "@/lib/store";
+import { useRemote, useURLSearch, type Publication } from "@/lib/store";
 import { categorias } from "@/lib/modelo";
 import { CabecalhoPagina } from "@/components/app/cabecalho-pagina";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,27 @@ export default function Inicio() {
     [bairro, setBairro] = useState(""),
     [category, setCategory] = useState(""),
     [type, setType] = useState(""),
-    [page, setPage] = useState(0);
+    [cursors, setCursors] = useState<string[]>([]),
+    [unit, setUnit] = useState(""),
+    [min, setMin] = useState(""),
+    [max, setMax] = useState(""),
+    [start, setStart] = useState(""),
+    [end, setEnd] = useState(""),
+    [pos, setPos] = useState<{ lat: number; lng: number } | null>(null),
+    [radius, setRadius] = useState(10),
+    [notice, setNotice] = useState("");
+  const target = new URLSearchParams(useURLSearch()).get("publicacao");
+  const extra: Record<string, string> = {};
+  if (min) extra.min = String(Math.round(Number(min) * 100));
+  if (max) extra.max = String(Math.round(Number(max) * 100));
+  if (start) extra.inicio = new Date(start).toISOString();
+  if (end) extra.fim = new Date(end).toISOString();
+  if (pos) {
+    extra.lat = String(pos.lat);
+    extra.lng = String(pos.lng);
+    extra.radius = String(radius);
+  }
+  if (target) extra.publicacao = target;
   const query =
     "feed&" +
     new URLSearchParams({
@@ -21,12 +41,15 @@ export default function Inicio() {
       bairro,
       categoria: category,
       tipo: type,
-      page: String(page),
+      cursor: cursors.at(-1) || "",
+      unidade: unit,
+      ...extra,
     });
   const { data, error, loading, refresh } = useRemote<{
     publicacoes: Publication[];
     hasMore: boolean;
-  }>(query, { publicacoes: [], hasMore: false });
+    nextCursor: string | null;
+  }>(query, { publicacoes: [], hasMore: false, nextCursor: null });
   return (
     <div>
       <CabecalhoPagina
@@ -41,7 +64,7 @@ export default function Inicio() {
           value={city}
           onChange={(e) => {
             setCity(e.target.value);
-            setPage(0);
+            setCursors([]);
           }}
         />
         <Input
@@ -50,7 +73,7 @@ export default function Inicio() {
           value={bairro}
           onChange={(e) => {
             setBairro(e.target.value);
-            setPage(0);
+            setCursors([]);
           }}
         />
         <Select
@@ -58,7 +81,7 @@ export default function Inicio() {
           value={category}
           onChange={(e) => {
             setCategory(e.target.value);
-            setPage(0);
+            setCursors([]);
           }}
         >
           <option value="">Todas as categorias</option>
@@ -71,7 +94,7 @@ export default function Inicio() {
           value={type}
           onChange={(e) => {
             setType(e.target.value);
-            setPage(0);
+            setCursors([]);
           }}
         >
           <option value="">Ofertas e necessidades</option>
@@ -79,6 +102,138 @@ export default function Inicio() {
           <option value="contratar">Precisa contratar</option>
         </Select>
       </div>
+      {target && (
+        <p className="mb-4">
+          Você voltou à publicação escolhida. Confirme o contato abaixo.{" "}
+          <Link className="underline" href="/app/inicio">
+            Ver todas
+          </Link>
+        </p>
+      )}
+      <div className="mb-5 grid gap-3 sm:grid-cols-3">
+        <Select
+          aria-label="Unidade para filtrar preço"
+          value={unit}
+          onChange={(e) => {
+            setUnit(e.target.value);
+            setMin("");
+            setMax("");
+            setCursors([]);
+          }}
+        >
+          <option value="">Todas as unidades</option>
+          {["hora", "diaria", "servico", "m2"].map((u) => (
+            <option key={u}>{u}</option>
+          ))}
+        </Select>
+        <Input
+          aria-label="Preço mínimo em reais"
+          placeholder="Mínimo R$"
+          type="number"
+          min={0}
+          step="0.01"
+          disabled={!unit}
+          value={min}
+          onChange={(e) => {
+            setMin(e.target.value);
+            setCursors([]);
+          }}
+        />
+        <Input
+          aria-label="Preço máximo em reais"
+          placeholder="Máximo R$"
+          type="number"
+          min={0}
+          step="0.01"
+          disabled={!unit}
+          value={max}
+          onChange={(e) => {
+            setMax(e.target.value);
+            setCursors([]);
+          }}
+        />
+        <label>
+          Disponível a partir de
+          <Input
+            type="datetime-local"
+            value={start}
+            onChange={(e) => {
+              setStart(e.target.value);
+              setCursors([]);
+            }}
+          />
+        </label>
+        <label>
+          Disponível até
+          <Input
+            type="datetime-local"
+            value={end}
+            onChange={(e) => {
+              setEnd(e.target.value);
+              setCursors([]);
+            }}
+          />
+        </label>
+        <Button
+          variant="secondary"
+          onClick={() => {
+            if (!navigator.geolocation) {
+              setNotice("Use cidade e bairro.");
+              return;
+            }
+            navigator.geolocation.getCurrentPosition(
+              (p) => {
+                setPos({ lat: p.coords.latitude, lng: p.coords.longitude });
+                setCursors([]);
+                setNotice(
+                  "O raio inclui apenas anúncios com localização aproximada informada.",
+                );
+              },
+              () => setNotice("GPS indisponível. Use cidade e bairro."),
+              { timeout: 10000 },
+            );
+          }}
+        >
+          Buscar por localização
+        </Button>
+        {pos && (
+          <label>
+            Raio em km
+            <Input
+              type="number"
+              min={1}
+              max={100}
+              value={radius}
+              onChange={(e) => {
+                setRadius(
+                  Math.max(1, Math.min(100, Number(e.target.value) || 1)),
+                );
+                setCursors([]);
+              }}
+            />
+          </label>
+        )}
+        <Button
+          variant="ghost"
+          onClick={() => {
+            setCity("");
+            setBairro("");
+            setCategory("");
+            setType("");
+            setUnit("");
+            setMin("");
+            setMax("");
+            setStart("");
+            setEnd("");
+            setPos(null);
+            setCursors([]);
+            setNotice("");
+          }}
+        >
+          Limpar filtros
+        </Button>
+      </div>
+      {notice && <p role="status">{notice}</p>}
       <Feedback error={error} loading={loading} retry={refresh} />
       <div className="grid gap-3">
         {!loading && !error && !data.publicacoes.length && (
@@ -93,15 +248,17 @@ export default function Inicio() {
       <div className="mt-5 flex gap-3">
         <Button
           variant="secondary"
-          disabled={page === 0 || loading}
-          onClick={() => setPage((v) => v - 1)}
+          disabled={!cursors.length || loading}
+          onClick={() => setCursors((v) => v.slice(0, -1))}
         >
           Anterior
         </Button>
         <Button
           variant="secondary"
           disabled={!data.hasMore || loading}
-          onClick={() => setPage((v) => v + 1)}
+          onClick={() => {
+            if (data.nextCursor) setCursors((v) => [...v, data.nextCursor!]);
+          }}
         >
           Próxima
         </Button>

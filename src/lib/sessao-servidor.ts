@@ -45,7 +45,7 @@ export async function lerCookieSessao(
 ): Promise<Sessao | null> {
   if (!token) return null;
   const [payload, assinatura] = token.split(".");
-  if (!payload || !assinatura) return null;
+  if (token.split(".").length !== 2 || !payload || !assinatura) return null;
   if (!process.env.AUTH_SECRET) return null;
   const esperado = await assinar(payload);
   const a = Buffer.from(esperado),
@@ -57,7 +57,12 @@ export async function lerCookieSessao(
     if (!Number.isSafeInteger(dados.exp) || dados.exp < Date.now()) return null;
     if (!z.uuid().safeParse(dados.id).success || typeof dados.nome !== "string")
       return null;
-    return { id: dados.id, nome: dados.nome, email: dados.email };
+    return {
+      id: dados.id,
+      nome: dados.nome,
+      email: dados.email,
+      sessionVersion: dados.sessionVersion ?? 0,
+    };
   } catch {
     return null;
   }

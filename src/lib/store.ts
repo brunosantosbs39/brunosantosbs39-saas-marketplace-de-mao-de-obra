@@ -24,6 +24,10 @@ export type Publication = {
   fim: string;
   status: string;
   version: number;
+  situacao?: "pendente" | "finalizado";
+  latitude?: number | null;
+  longitude?: number | null;
+  distancia?: number | null;
 };
 export type Professional = {
   id: string;
@@ -36,6 +40,8 @@ export type Professional = {
   latitude: number | null;
   longitude: number | null;
   images: string[];
+  distancia?: number | null;
+  raioAtendimento?: number;
 };
 export type Conversation = {
   id: string;
@@ -44,13 +50,34 @@ export type Conversation = {
   contato: string;
   contatoId: string;
   bloqueada: boolean;
+  somenteLeitura: boolean;
 };
 export type Message = {
   id: string;
   autorId: string;
   texto: string;
   criadoEm: string;
+  removed?: boolean;
 };
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public status: number,
+  ) {
+    super(message);
+  }
+}
+export async function responseData(res: Response) {
+  const data = await res.json().catch(() => null);
+  if (!data)
+    throw new ApiError(
+      res.status === 413
+        ? "Arquivo muito grande. Envie uma foto de até 4 MB."
+        : "O serviço não respondeu corretamente. Tente novamente.",
+      res.status,
+    );
+  return data;
+}
 export async function request<T = Record<string, unknown>>(
   action: string,
   input?: object,
@@ -65,8 +92,9 @@ export async function request<T = Record<string, unknown>>(
         }
       : { cache: "no-store" },
   );
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Não foi possível carregar.");
+  const data = await responseData(res);
+  if (!res.ok)
+    throw new ApiError(data.error || "Não foi possível carregar.", res.status);
   return data;
 }
 export function useRemote<T>(query: string, initial: T, poll = 0) {
@@ -85,7 +113,7 @@ export function useRemote<T>(query: string, initial: T, poll = 0) {
           cache: "no-store",
           signal: controller.signal,
         });
-        const d = await res.json();
+        const d = await responseData(res);
         if (!res.ok) throw new Error(d.error);
         if (alive) {
           setData(d);
@@ -147,9 +175,10 @@ export function useURLSearch() {
 export function encerrarSessao() {
   /* sessão controlada pelo cookie HttpOnly */
 }
-export function loginFor(path: string) {
+export function loginFor(path: string, owner?: string) {
   try {
     sessionStorage.setItem("ml:return", path);
+    sessionStorage.setItem("ml:returnOwner", owner || "");
   } catch {}
   window.location.assign("/entrar");
 }

@@ -19,6 +19,11 @@ export const publicationInput = z
     inicio: z.iso.datetime(),
     fim: z.iso.datetime(),
     requestId: z.uuid(),
+    latitude: z.number().min(-90).max(90).nullable().optional(),
+    longitude: z.number().min(-180).max(180).nullable().optional(),
+  })
+  .refine((p) => (p.latitude == null) === (p.longitude == null), {
+    message: "Informe as duas coordenadas.",
   })
   .refine((p) => new Date(p.fim) > new Date(p.inicio), {
     message: "O fim deve ser posterior ao início.",
@@ -35,6 +40,7 @@ export const profileInput = z
     latitude: z.number().min(-90).max(90).nullable().optional(),
     longitude: z.number().min(-180).max(180).nullable().optional(),
     images: z.array(z.url().max(2048)).max(10).default([]),
+    raioAtendimento: z.number().int().min(1).max(100).default(10),
   })
   .refine((p) => (p.latitude == null) === (p.longitude == null), {
     message: "Informe as duas coordenadas.",

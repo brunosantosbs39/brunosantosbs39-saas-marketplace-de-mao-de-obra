@@ -10,7 +10,9 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "test": "node --import tsx --test tests/*.test.ts",
-    "db:migrate": "node --env-file-if-exists=.env.local scripts/migrate.mjs"
+    "db:migrate": "node --env-file-if-exists=.env.local scripts/migrate.mjs",
+    "media:cleanup": "node --env-file-if-exists=.env.local scripts/media-cleanup.mjs",
+    "account:purge": "node --env-file-if-exists=.env.local scripts/account-purge.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "1.1.0",

@@ -22,6 +22,18 @@ test("marketplace: isolation, persistence, retries, expiry, origin and blocks", 
       "utf8",
     ),
   );
+  await db.exec(
+    await readFile(
+      new URL("../migrations/002-production-readiness.sql", import.meta.url),
+      "utf8",
+    ),
+  );
+  await db.exec(
+    await readFile(
+      new URL("../migrations/002-production-readiness.sql", import.meta.url),
+      "utf8",
+    ),
+  );
   process.env.DATABASE_URL = "postgresql://test:test@localhost/test";
   process.env.AUTH_SECRET = "local-integration-tests-only";
   neonConfig.fetchFunction = async (
@@ -230,8 +242,8 @@ test("marketplace: isolation, persistence, retries, expiry, origin and blocks", 
     b,
   );
   assert.equal((await get("reports", b)).status, 403);
-  process.env.MODERATOR_EMAILS = "a@test.local";
-  const reports = (await (await get("reports", a)).json()).denuncias;
+  process.env.MODERATOR_EMAILS = "c@test.local";
+  const reports = (await (await get("reports", c)).json()).denuncias;
   assert.equal(reports.length, 1);
   assert.equal(
     (
@@ -242,7 +254,7 @@ test("marketplace: isolation, persistence, retries, expiry, origin and blocks", 
           remove: true,
           note: "Remoção após revisão",
         },
-        a,
+        c,
       )
     ).status,
     200,
@@ -256,7 +268,7 @@ test("marketplace: isolation, persistence, retries, expiry, origin and blocks", 
       .status,
     409,
   );
-  assert.equal((await (await get("reports", a)).json()).denuncias.length, 0);
+  assert.equal((await (await get("reports", c)).json()).denuncias.length, 0);
   await db.query("UPDATE ml_rate_limits SET count=120 WHERE account_id=$1", [
     b,
   ]);

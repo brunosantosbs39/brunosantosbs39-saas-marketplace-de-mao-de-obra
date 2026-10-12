@@ -1,4 +1,9 @@
-export type Sessao = { id?: string; nome: string; email?: string };
+export type Sessao = {
+  id?: string;
+  nome: string;
+  email?: string;
+  sessionVersion?: number;
+};
 export type TipoPublicacao = "contratar" | "disponivel";
 export type SituacaoServico = "pendente" | "finalizado";
 export type CategoriaServico =

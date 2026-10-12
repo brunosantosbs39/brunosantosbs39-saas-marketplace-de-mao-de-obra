@@ -64,9 +64,11 @@ export async function GET(req: Request) {
       throw new Error("Identidade Google inválida");
     const sql = getDb();
     const accounts =
-      await sql`INSERT INTO ml_accounts(google_sub,name,email) VALUES(${user.sub},${user.name || user.email},${user.email}) ON CONFLICT(google_sub) DO UPDATE SET email=excluded.email RETURNING id`;
+      await sql`INSERT INTO ml_accounts(google_sub,name,email) VALUES(${user.sub},${user.name || user.email},${user.email}) ON CONFLICT(google_sub) DO UPDATE SET email=excluded.email RETURNING id,status,session_version`;
+    if (accounts[0].status !== "active") throw new Error("Conta indisponível");
     const tokenSessao = await criarCookieSessao({
       id: accounts[0].id,
+      sessionVersion: Number(accounts[0].session_version),
       nome: user.name || user.email || "Usuário Google",
       email: user.email,
     });
