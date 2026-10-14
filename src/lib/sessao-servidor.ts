@@ -17,25 +17,19 @@ function fromBase64Url(input: string) {
   return new Uint8Array([...binary].map((char) => char.charCodeAt(0)));
 }
 
-async function assinar(valor: string) {
+async function chave() {
   const segredo = process.env.AUTH_SECRET;
   if (!segredo) throw new Error("AUTH_SECRET não configurado");
-  const key = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(segredo),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign", "verify"],
-  );
-  const assinatura = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(valor));
+  return crypto.subtle.importKey("raw", new TextEncoder().encode(segredo), { name: "HMAC", hash: "SHA-256" }, false, ["sign", "verify"]);
+}
+
+async function assinar(valor: string) {
+  const assinatura = await crypto.subtle.sign("HMAC", await chave(), new TextEncoder().encode(valor));
   return base64Url(new Uint8Array(assinatura));
 }
 
 export async function criarCookieSessao(sessao: Sessao) {
-  const payload = base64Url(JSON.stringify({
-    ...sessao,
-    exp: Date.now() + 1000 * 60 * 60 * 24 * 7,
-  }));
+  const payload = base64Url(JSON.stringify({ ...sessao, exp: Date.now() + 1000 * 60 * 60 * 24 * 7 }));
   return `${payload}.${await assinar(payload)}`;
 }
 
@@ -44,13 +38,24 @@ export async function lerCookieSessao(token?: string | null): Promise<Sessao | n
   const [payload, assinatura] = token.split(".");
   if (!payload || !assinatura) return null;
   const esperado = await assinar(payload);
-  if (esperado !== assinatura) return null;
-
+  if (esperado.length !== assinatura.length) return null;
+  let igual = 0;
+  for (let i = 0; i < esperado.length; i++) igual |= esperado.charCodeAt(i) ^ assinatura.charCodeAt(i);
+  if (igual !== 0) return null;
   try {
     const dados = JSON.parse(new TextDecoder().decode(fromBase64Url(payload)));
     if (!dados.exp || dados.exp < Date.now()) return null;
-    return { nome: dados.nome, email: dados.email };
+    return { id: dados.id, nome: dados.nome, email: dados.email, papel: dados.papel, modo: dados.modo };
   } catch {
     return null;
   }
+}
+
+export function cookieDe(req: Request, nome: string) {
+  const cookies = req.headers.get("cookie") || "";
+  return cookies.split(";").map((item) => item.trim()).find((item) => item.startsWith(`${nome}=`))?.slice(nome.length + 1);
+}
+
+export async function sessaoDaRequisicao(req: Request) {
+  return lerCookieSessao(cookieDe(req, nomeCookieSessao));
 }
