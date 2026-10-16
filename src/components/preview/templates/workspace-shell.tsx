@@ -8,7 +8,7 @@ const icons=[Home,LogIn,MapPin,Plus,User,MessageCircle,ClipboardCheck];
 function Navigation({active,close}:{active:string;close?:()=>void}){
  return <><Link className="ws-brand" href={rotas.landing} onClick={close}><span><Zap size={22}/></span><b>KineticDispatch<small>Mão de obra local</small></b></Link>
  <div className="ws-section-label">Área de trabalho</div>
- <nav className="ws-nav" aria-label="Navegação principal">{telas.map(([id,label],i)=>{const Icon=icons[i];return <Link key={id} href={rotas[id]} onClick={close} aria-current={active===id?"page":undefined} title={label}><Icon size={20}/><span>{id==="oportunidades"?"Oportunidades & Chat":id==="servico"?"Gestão de Serviços":label}</span></Link>})}</nav>
+ <nav className="ws-nav" aria-label="Navegação principal">{telas.map(([id,label],i)=>{if(id==="landing")return null;const Icon=icons[i];return <Link key={id} href={rotas[id]} onClick={close} aria-current={active===id?"page":undefined} title={label}><Icon size={20}/><span>{id==="oportunidades"?"Oportunidades & Chat":id==="servico"?"Gestão de Serviços":label}</span></Link>})}</nav>
  <div className="ws-bottom"><Link href={rotas.publicar} onClick={close} className="ws-publish" title="Publicar serviço"><Plus size={20}/><span>Publicar serviço</span></Link><p>Prévia interativa<br/>Dados locais de demonstração</p></div></>;
 }
 export function WorkspaceShell({tela,children}:{tela:string;children:ReactNode}){
