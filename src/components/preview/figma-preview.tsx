@@ -1,4 +1,5 @@
 "use client";
+import { DemoProvider } from "./foundations/demo-state";
 import { telas, type Tela } from "./foundations/routes";
 import { Landing } from "./pages/landing";
 import { Login } from "./pages/login";
@@ -9,7 +10,7 @@ import { Oportunidades } from "./pages/oportunidades";
 import { Servico } from "./pages/servico";
 import { Unknown } from "./pages/unknown";
 
-export function FigmaPreview({ tela }: { tela: string }) {
+function PreviewContent({ tela }: { tela: string }) {
   const normalized: Tela | null = telas.some(([slug]) => slug === tela) ? tela as Tela : null;
   if (!normalized) return <Unknown />;
   return (
@@ -25,3 +26,5 @@ export function FigmaPreview({ tela }: { tela: string }) {
     </div>
   );
 }
+
+export function FigmaPreview({tela}:{tela:string}) {return <DemoProvider><PreviewContent tela={tela}/></DemoProvider>;}

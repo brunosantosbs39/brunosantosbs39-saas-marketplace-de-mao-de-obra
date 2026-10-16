@@ -1,4 +1,6 @@
 "use client";
+import { useDemoState, money, type Publication, type Order } from "../foundations/demo-state";
+
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -8,11 +10,12 @@ import { Button, Input } from "../atoms/controls";
 import { rotas, type Tela } from "../foundations/routes";
 export function Login() {
   const router = useRouter();
-  const [role,setRole]=useState("contratante");
+  const [role,setRole]=useDemoState("account-role","Contratante");
   const [showPassword,setShowPassword]=useState(false);
   const [loading,setLoading]=useState(false);
   const [notice,setNotice]=useState("");
-  function enter(){setLoading(true);setTimeout(()=>router.push(rotas.radar),450)}
+  const [session,setSession]=useDemoState("demo-session",false);
+  function enter(){setSession(true);setLoading(true);setTimeout(()=>router.push(rotas.radar),450)}
   return <div className="secure-login">
     <style>{`
       .secure-login{font-family:var(--kd-font);color:var(--kd-ink);background:var(--kd-canvas);font-size:clamp(14px,1.15vw,22px);line-height:1.5}
@@ -34,19 +37,19 @@ export function Login() {
         <div className="sl-review-wrap"><article className="sl-review"><div className="sl-review-head"><span className="sl-avatar">RC</span><div><h3>Rodrigo Castilho</h3><p>Eletricista Industrial • Goiânia, GO</p></div><span className="sl-level"><ShieldCheck/>Nível 4 Verificado</span></div><blockquote>“Receber através da custódia Escrow eliminou qualquer risco de inadimplência. As ordens chegam com rota otimizada e o repasse cai na conta no mesmo instante da validação.”</blockquote></article></div>
       </aside>
       <main className="sl-main"><h2>Bem-vindo de volta</h2><p className="sl-subtitle">Acesse o radar de chamados, propostas e gestão financeira.</p>
-        <div className="sl-roles"><Button className={role==="contratante"?"active":""} aria-pressed={role==="contratante"} onClick={()=>setRole("contratante")}><Briefcase/>Sou Contratante / Empresa</Button><Button className={role==="profissional"?"active":""} aria-pressed={role==="profissional"} onClick={()=>setRole("profissional")}><Wrench/>Sou Profissional Autônomo</Button></div>
-        <div className="sl-social"><Button onClick={enter}><span className="sl-google">G</span>Continuar com Google</Button><Button onClick={enter}><svg viewBox="0 0 24 24" className="sl-apple" aria-hidden="true"><path d="M17.2 12.6c0-2 1.6-3 1.7-3.1-1-1.4-2.5-1.6-3-1.6-1.3-.1-2.6.8-3.3.8-.7 0-1.8-.8-2.9-.8-1.5 0-2.9.9-3.7 2.2-1.6 2.8-.4 7 1.2 9.2.7 1.1 1.6 2.2 2.7 2.1 1.1 0 1.5-.7 2.9-.7s1.8.7 2.9.7c1.2 0 1.9-1 2.6-2.1.9-1.2 1.3-2.5 1.3-2.6-.1 0-2.4-.9-2.4-4.1ZM15 6.5c.6-.8 1.1-1.9 1-3-.9.1-2 .6-2.7 1.4-.6.7-1.1 1.8-1 2.9 1 .1 2.1-.5 2.7-1.3Z"/></svg>Continuar com Apple</Button><Button className="sl-gov" onClick={enter}><span className="sl-br">BR</span><span>Entrar com Gov.br <small>(Validação Oficial Nível Prata/Ouro)</small></span></Button></div>
+        <div className="sl-roles"><Button className={role==="Contratante"?"active":""} aria-pressed={role==="Contratante"} onClick={()=>setRole("Contratante")}><Briefcase/>Sou Contratante / Empresa</Button><Button className={role==="Profissional"?"active":""} aria-pressed={role==="Profissional"} onClick={()=>setRole("Profissional")}><Wrench/>Sou Profissional Autônomo</Button></div>
+        <div className="sl-social"><Button onClick={enter}><span className="sl-google">G</span>Simular Google</Button><Button onClick={enter}><svg viewBox="0 0 24 24" className="sl-apple" aria-hidden="true"><path d="M17.2 12.6c0-2 1.6-3 1.7-3.1-1-1.4-2.5-1.6-3-1.6-1.3-.1-2.6.8-3.3.8-.7 0-1.8-.8-2.9-.8-1.5 0-2.9.9-3.7 2.2-1.6 2.8-.4 7 1.2 9.2.7 1.1 1.6 2.2 2.7 2.1 1.1 0 1.5-.7 2.9-.7s1.8.7 2.9.7c1.2 0 1.9-1 2.6-2.1.9-1.2 1.3-2.5 1.3-2.6-.1 0-2.4-.9-2.4-4.1ZM15 6.5c.6-.8 1.1-1.9 1-3-.9.1-2 .6-2.7 1.4-.6.7-1.1 1.8-1 2.9 1 .1 2.1-.5 2.7-1.3Z"/></svg>Simular Apple</Button><Button className="sl-gov" onClick={enter}><span className="sl-br">BR</span><span>Simular Gov.br <small>(Validação Oficial Nível Prata/Ouro)</small></span></Button></div>
         <div className="sl-divider">ou com e-mail corporativo / CPF</div>
         <form onSubmit={e=>{e.preventDefault();enter()}}>
-          <label className="sl-label" htmlFor="preview-email">E-mail ou CPF/CNPJ</label><div className="sl-field"><User/><Input id="preview-email" autoComplete="username" required placeholder="nome@empresa.com.br ou 000.000.000-00"/></div>
+          <label className="sl-label" htmlFor="preview-email">E-mail ou CPF/CNPJ</label><div className="sl-field"><User/><Input id="preview-email" autoComplete="off" required placeholder="nome@empresa.com.br ou 000.000.000-00"/></div>
           <div className="sl-labelrow"><label className="sl-label" htmlFor="preview-password">Senha de Acesso</label><Button type="button" className="sl-forgot" onClick={()=>setNotice("Recuperação de senha demonstrativa. Nesta prévia, preencha os campos para testar o acesso.")}>Esqueceu sua senha?</Button></div>
-          <div className="sl-field"><Lock/><Input id="preview-password" type={showPassword?"text":"password"} autoComplete="current-password" required placeholder="Digite sua chave de segurança"/><Button type="button" aria-label={showPassword?"Ocultar senha":"Mostrar senha"} onClick={()=>setShowPassword(!showPassword)}>{showPassword?<EyeOff/>:<Eye/>}</Button></div>
-          <div className="sl-remember"><label><Input type="checkbox"/>Manter conectado neste computador</label><span className="sl-audit"><ShieldCheck/>Sessão Auditada</span></div>
-          <Button className="sl-submit" disabled={loading}>{loading?"Entrando…":"Entrar na Plataforma"}<ArrowRight/></Button>
+          <div className="sl-field"><Lock/><Input id="preview-password" type={showPassword?"text":"password"} autoComplete="off" required placeholder="Senha fictícia — não use sua senha real"/><Button type="button" aria-label={showPassword?"Ocultar senha":"Mostrar senha"} onClick={()=>setShowPassword(!showPassword)}>{showPassword?<EyeOff/>:<Eye/>}</Button></div>
+          <div className="sl-remember"><label><Input type="checkbox"/>Manter conectado neste computador</label><span className="sl-audit"><ShieldCheck/>Sessão demonstrativa</span></div>
+          <Button className="sl-submit" disabled={loading}>{loading?"Entrando…":"Entrar na Demonstração"}<ArrowRight/></Button>
         </form>
-        <Button className="sl-passkey" onClick={enter}><Fingerprint/>Acessar via Chave de Segurança ou Biometria (Passkey / WebAuthn)</Button>
+        <Button className="sl-passkey" onClick={enter}><Fingerprint/>Simular acesso por Passkey (sem biometria)</Button>
         {notice&&<div className="sl-notice" role="status">{notice}</div>}
-        <footer className="sl-footer"><span className="sl-encryption"><Lock/>Criptografia SSL de 256 bits ponta a ponta</span><div className="sl-footlinks"><Link href={rotas.oportunidades}>Suporte 24/7</Link><span>•</span><Button onClick={()=>setNotice("Tela demonstrativa. Os termos de uso serão disponibilizados na versão funcional.")}>Termos de Uso</Button></div></footer>
+        <footer className="sl-footer"><span className="sl-encryption"><Lock/>Conexão HTTPS • autenticação não integrada</span><div className="sl-footlinks"><Link href={rotas.oportunidades}>Suporte 24/7</Link><span>•</span><Button onClick={()=>setNotice("Tela demonstrativa. Os termos de uso serão disponibilizados na versão funcional.")}>Termos de Uso</Button></div></footer>
       </main>
     </div>
   </div>;
