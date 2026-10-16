@@ -28,4 +28,8 @@ function PreviewContent({ tela }: { tela: string }) {
   );
 }
 
-export function FigmaPreview({tela}:{tela:string}) {return <WorkspaceShell tela={tela}><DemoProvider><PreviewContent tela={tela}/></DemoProvider></WorkspaceShell>;}
+export function FigmaPreview({tela}:{tela:string}) {
+ const publicPage=tela==="landing"||tela==="entrar";
+ const content=<DemoProvider><PreviewContent tela={tela}/></DemoProvider>;
+ return publicPage?content:<WorkspaceShell tela={tela}>{content}</WorkspaceShell>;
+}
