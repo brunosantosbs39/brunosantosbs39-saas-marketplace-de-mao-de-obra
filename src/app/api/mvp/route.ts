@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { garantirUsuario, idDaSessao, sqlMvp } from "@/lib/repositorio";
+import { idDaSessao } from "@/lib/repositorio";
+import { banco } from "@/lib/banco";
+import { podeMudarOrdem } from "@/lib/regras-servico";
 import { sessaoDaRequisicao } from "@/lib/sessao-servidor";
 
 const Publicar = z.object({ action: z.literal("publicar"), tipo: z.enum(["contratar","disponivel"]), categoria: z.string().min(2).max(80), titulo: z.string().min(3).max(140), descricao: z.string().max(3000).default(""), valor: z.number().nonnegative().max(1000000).nullable().optional(), urgente: z.boolean().optional(), localizacaoDescricao: z.string().max(180).optional(), latitude: z.number().min(-90).max(90).optional(), longitude: z.number().min(-180).max(180).optional(), raioKm: z.number().int().min(1).max(100).optional() });
 const Perfil = z.object({ action: z.literal("salvarPerfil"), nome: z.string().min(2).max(80), bio: z.string().max(1200).default(""), categorias: z.array(z.string().min(2).max(80)).max(10), disponivel: z.boolean(), localizacaoDescricao: z.string().max(180).optional(), latitude: z.number().min(-90).max(90).optional(), longitude: z.number().min(-180).max(180).optional(), portfolio: z.array(z.object({ descricao: z.string().min(2).max(500), imagemUrl: z.string().url().optional() })).max(12).default([]) });
 const AbrirConversa = z.object({ action: z.literal("abrirConversa"), publicacaoId: z.string().min(1).max(120) });
-const EnviarMensagem = z.object({ action: z.literal("enviarMensagem"), conversaId: z.string().min(1).max(120), texto: z.string().min(1).max(3000) });
+const EnviarMensagem = z.object({ action: z.literal("enviarMensagem"), conversaId: z.string().min(1).max(120), texto: z.string().trim().min(1).max(3000) });
 const EnviarProposta = z.object({ action: z.literal("enviarProposta"), publicacaoId: z.string().min(1).max(120), valor: z.number().positive().max(1000000), mensagem: z.string().max(1200).default("") });
 const AceitarProposta = z.object({ action: z.literal("aceitarProposta"), propostaId: z.string().min(1).max(120) });
 const AtualizarOrdem = z.object({ action: z.literal("atualizarOrdem"), ordemId: z.string().min(1).max(120), status: z.enum(["em_andamento","concluido","cancelado"]) });
@@ -18,15 +20,16 @@ const Payload = z.discriminatedUnion("action", [Publicar, Perfil, AbrirConversa,
 async function contexto(req: Request) {
   const sessao = await sessaoDaRequisicao(req);
   if (!sessao) return null;
-  const userId = await garantirUsuario(sessao);
-  const sql = await sqlMvp();
+  const userId = idDaSessao(sessao);
+  const sql = await banco();
+  if (!sql) throw new Error("DATABASE_URL não configurado");
   return { sessao, userId, sql };
 }
 
 function semBanco(erro: unknown) {
   const mensagem = erro instanceof Error ? erro.message : "Falha interna";
   const status = mensagem.includes("DATABASE_URL") ? 503 : 500;
-  return NextResponse.json({ erro: mensagem }, { status });
+  return NextResponse.json({ erro: status === 503 ? "Serviço de dados indisponível." : "Não foi possível concluir a operação." }, { status });
 }
 
 export async function GET(req: Request) {
@@ -90,6 +93,8 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
+    const origin = req.headers.get("origin");
+    if (origin && origin !== new URL(req.url).origin) return NextResponse.json({ erro: "Origem não permitida" }, { status: 403 });
     const ctx = await contexto(req);
     if (!ctx) return NextResponse.json({ erro: "Não autenticado" }, { status: 401 });
     const body = Payload.safeParse(await req.json().catch(() => null));
@@ -128,11 +133,19 @@ export async function POST(req: Request) {
     }
 
     if (p.action === "enviarMensagem") {
-      const acesso = await sql`SELECT id FROM conversas WHERE id=${p.conversaId} AND (${userId}=contratante_id OR ${userId}=profissional_id) LIMIT 1`;
-      if (!acesso.length) return NextResponse.json({ erro: "Conversa não encontrada" }, { status: 404 });
       const id = `msg-${crypto.randomUUID()}`;
-      await sql`INSERT INTO mensagens (id,conversa_id,usuario_id,texto) VALUES (${id},${p.conversaId},${userId},${p.texto})`;
-      await sql`UPDATE conversas SET atualizado_em=now() WHERE id=${p.conversaId}`;
+      const enviadas = await sql`WITH mensagem AS (
+        INSERT INTO mensagens (id,conversa_id,usuario_id,texto)
+        SELECT ${id},c.id,${userId},${p.texto} FROM conversas c
+        WHERE c.id=${p.conversaId} AND (${userId}=c.contratante_id OR ${userId}=c.profissional_id)
+          AND NOT EXISTS (SELECT 1 FROM bloqueios b
+            WHERE (b.bloqueador_id=c.contratante_id AND b.bloqueado_id=c.profissional_id)
+               OR (b.bloqueador_id=c.profissional_id AND b.bloqueado_id=c.contratante_id))
+        RETURNING id,conversa_id
+      ), conversa AS (
+        UPDATE conversas SET atualizado_em=now() WHERE id IN (SELECT conversa_id FROM mensagem) RETURNING id
+      ) SELECT id FROM mensagem`;
+      if (!enviadas.length) return NextResponse.json({ erro: "Conversa indisponível" }, { status: 403 });
       return NextResponse.json({ ok: true, id }, { status: 201 });
     }
 
@@ -146,22 +159,46 @@ export async function POST(req: Request) {
     }
 
     if (p.action === "aceitarProposta") {
-      const props = await sql`SELECT pr.id,pr.publicacao_id,pr.profissional_id,pr.valor,p.usuario_id,p.status FROM propostas pr JOIN publicacoes p ON p.id=pr.publicacao_id WHERE pr.id=${p.propostaId} LIMIT 1`;
-      if (!props.length || props[0].usuario_id !== userId) return NextResponse.json({ erro: "Proposta não encontrada" }, { status: 404 });
-      if (props[0].status !== "aberta") return NextResponse.json({ erro: "Serviço já fechado" }, { status: 409 });
       const ordemId = `os-${crypto.randomUUID()}`;
-      await sql`INSERT INTO ordens_servico (id,publicacao_id,proposta_id,contratante_id,profissional_id,valor) VALUES (${ordemId},${props[0].publicacao_id},${p.propostaId},${userId},${props[0].profissional_id},${props[0].valor})`;
-      await sql`UPDATE propostas SET status=CASE WHEN id=${p.propostaId} THEN 'aceita' ELSE 'recusada' END WHERE publicacao_id=${props[0].publicacao_id}`;
-      await sql`UPDATE publicacoes SET status='em_andamento',atualizado_em=now() WHERE id=${props[0].publicacao_id}`;
-      return NextResponse.json({ ok: true, ordemId });
+      // One statement reserves the publication and creates the order atomically.
+      // A competing UPDATE rechecks status after waiting for the row lock.
+      const criadas = await sql`WITH reservada AS (
+        UPDATE publicacoes SET status='em_andamento', atualizado_em=now()
+        WHERE id=(SELECT publicacao_id FROM propostas WHERE id=${p.propostaId} AND status='pendente')
+          AND usuario_id=${userId} AND status='aberta'
+        RETURNING id
+      ), ordem AS (
+        INSERT INTO ordens_servico (id,publicacao_id,proposta_id,contratante_id,profissional_id,valor)
+        SELECT ${ordemId},pr.publicacao_id,pr.id,${userId},pr.profissional_id,pr.valor
+        FROM propostas pr JOIN reservada r ON r.id=pr.publicacao_id WHERE pr.id=${p.propostaId}
+        RETURNING id
+      ), atualizadas AS (
+        UPDATE propostas SET status=CASE WHEN id=${p.propostaId} THEN 'aceita' ELSE 'recusada' END
+        WHERE publicacao_id IN (SELECT id FROM reservada) RETURNING id
+      ) SELECT id FROM ordem`;
+      if (!criadas.length) return NextResponse.json({ erro: "Proposta indisponível ou serviço já fechado" }, { status: 409 });
+      return NextResponse.json({ ok: true, ordemId: criadas[0].id });
     }
 
     if (p.action === "atualizarOrdem") {
       const ordens = await sql`SELECT id,publicacao_id,contratante_id,profissional_id,status FROM ordens_servico WHERE id=${p.ordemId} LIMIT 1`;
       if (!ordens.length || (ordens[0].contratante_id !== userId && ordens[0].profissional_id !== userId)) return NextResponse.json({ erro: "Ordem não encontrada" }, { status: 404 });
-      await sql`UPDATE ordens_servico SET status=${p.status},concluido_em=CASE WHEN ${p.status}='concluido' THEN now() ELSE concluido_em END WHERE id=${p.ordemId}`;
-      if (p.status === "concluido") await sql`UPDATE publicacoes SET status='finalizada',atualizado_em=now() WHERE id=${ordens[0].publicacao_id}`;
-      if (p.status === "cancelado") await sql`UPDATE publicacoes SET status='aberta',atualizado_em=now() WHERE id=${ordens[0].publicacao_id}`;
+      const atual = String(ordens[0].status);
+      const contratante = ordens[0].contratante_id === userId;
+      if (!podeMudarOrdem(atual, p.status, contratante)) return NextResponse.json({ erro: "Transição de serviço não permitida" }, { status: 409 });
+      const alteradas = await sql`WITH alterada AS (
+        UPDATE ordens_servico SET status=${p.status},
+          concluido_em=CASE WHEN ${p.status}='concluido' THEN now() ELSE concluido_em END
+        WHERE id=${p.ordemId} AND status=${atual}
+          AND (contratante_id=${userId} OR profissional_id=${userId})
+          AND (${p.status}<>'concluido' OR contratante_id=${userId})
+        RETURNING id, publicacao_id
+      ), publicacao AS (
+        UPDATE publicacoes SET status=CASE WHEN ${p.status}='concluido' THEN 'finalizada'
+          WHEN ${p.status}='cancelado' THEN 'aberta' ELSE 'em_andamento' END, atualizado_em=now()
+        WHERE id IN (SELECT publicacao_id FROM alterada) RETURNING id
+      ) SELECT id FROM alterada`;
+      if (!alteradas.length) return NextResponse.json({ erro: "O serviço foi atualizado por outra pessoa. Recarregue e tente novamente." }, { status: 409 });
       return NextResponse.json({ ok: true });
     }
 
