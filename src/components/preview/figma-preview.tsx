@@ -1,4 +1,5 @@
 "use client";
+import { WorkspaceShell } from "./templates/workspace-shell";
 import { DemoProvider } from "./foundations/demo-state";
 import { telas, type Tela } from "./foundations/routes";
 import { Landing } from "./pages/landing";
@@ -27,4 +28,4 @@ function PreviewContent({ tela }: { tela: string }) {
   );
 }
 
-export function FigmaPreview({tela}:{tela:string}) {return <DemoProvider><PreviewContent tela={tela}/></DemoProvider>;}
+export function FigmaPreview({tela}:{tela:string}) {return <WorkspaceShell tela={tela}><DemoProvider><PreviewContent tela={tela}/></DemoProvider></WorkspaceShell>;}
