@@ -17,3 +17,11 @@ Estado específico permanece na página; componentes compostos recebem callbacks
 Use tokens para novos estilos. Não transforme todo trecho único em componente: extraia uma responsabilidade coesa ou um padrão reutilizado.
 CSS específico permanece junto de cada página; o CSS compartilhado pertence ao template.
 Dados, autenticação, pagamentos, geolocalização e chat continuam demonstrativos.
+
+## Fluxo funcional da demonstração
+Publicações, conversas (por chamado e profissional), ordens e checklists usam um armazenamento local versionado no navegador. Não existe sincronização entre usuários ou autenticação real.
+A aceitação cria uma ordem com o título, profissional, local e valor da proposta. Repetir o aceite reutiliza a ordem existente.
+A conclusão exige etapas em sequência e: duas fotos locais + checklist completo, ou confirmação manual de chave temporária. O ícone QR não é escaneável; câmera e validação remota não estão integradas.
+Contestação bloqueia conclusão. Resumos podem ser baixados como texto, sem validade financeira.
+Não usar dados pessoais reais. Erros de quota são exibidos; fotos de até 1 MB ajudam a limitar o armazenamento.
+Integrações pendentes: autenticação, banco multiusuário, mapa/geocodificação, comunicação real, custódia/PIX, auditoria e verificação de identidade.

@@ -4,9 +4,9 @@ type Values = Record<string, unknown>;
 type Store = { values: Values; write: <T>(key: string, value: SetStateAction<T>, initial: T) => void };
 const Context = createContext<Store | null>(null);
 const STORAGE = "mao-local-preview-v2";
-export type Publication = { id: string; title: string; description: string; category: string; location: string; radius: number; when: string; value: string; mode: string; createdAt: string };
+export type Publication = { id: string; title: string; description: string; category: string; location: string; radius: number; when: string; value: string; mode: string; createdAt: string; maximum?: string; unit?: string; photos?: Array<{name:string;url?:string}> };
 export type Order = { id: string; jobId: string; title: string; provider: string; value: string; location: string; status: "active" | "completed" | "disputed" };
-export function money(value: string) { const n = Number(value.replace(/\./g,"").replace(",",".")); return Number.isFinite(n) && n > 0 ? n : null; }
+export function money(value: string) { if(!/^\d+(?:\.\d{3})*(?:,\d{1,2})?$/.test(value.trim()))return null; const n = Number(value.replace(/\./g,"").replace(",",".")); return Number.isFinite(n) && n > 0 ? n : null; }
 export function DemoProvider({children}:{children: ReactNode}) {
  const [values,setValues]=useState<Values>({}); const current=useRef<Values>({});
  const [ready,setReady]=useState(false); const [error,setError]=useState("");
