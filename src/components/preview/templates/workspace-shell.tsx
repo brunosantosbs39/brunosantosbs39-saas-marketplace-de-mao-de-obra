@@ -1,15 +1,16 @@
 "use client";
 import Link from "next/link";
 import { useRef, useState, type ReactNode } from "react";
-import { Home, LogIn, MapPin, Plus, User, MessageCircle, ClipboardCheck, PanelLeftClose, PanelLeftOpen, Menu, X, Zap } from "lucide-react";
+import { Home, LogIn, LogOut, MapPin, Plus, User, MessageCircle, ClipboardCheck, PanelLeftClose, PanelLeftOpen, Menu, X, Zap } from "lucide-react";
 import { telas, rotas } from "../foundations/routes";
 import "./workspace-shell.css";
 const icons=[Home,LogIn,MapPin,Plus,User,MessageCircle,ClipboardCheck];
+function signOut(){try {const data=JSON.parse(localStorage.getItem("mao-local-preview-v2")||"{}");data["demo-session"]=false;localStorage.setItem("mao-local-preview-v2",JSON.stringify(data));}finally{window.location.replace(rotas.entrar);}}
 function Navigation({active,close}:{active:string;close?:()=>void}){
  return <><Link className="ws-brand" href={rotas.landing} onClick={close}><span><Zap size={22}/></span><b>KineticDispatch<small>Mão de obra local</small></b></Link>
  <div className="ws-section-label">Área de trabalho</div>
- <nav className="ws-nav" aria-label="Navegação principal">{telas.map(([id,label],i)=>{if(id==="landing")return null;const Icon=icons[i];return <Link key={id} href={rotas[id]} onClick={close} aria-current={active===id?"page":undefined} title={label}><Icon size={20}/><span>{id==="oportunidades"?"Oportunidades & Chat":id==="servico"?"Gestão de Serviços":label}</span></Link>})}</nav>
- <div className="ws-bottom"><Link href={rotas.publicar} onClick={close} className="ws-publish" title="Publicar serviço"><Plus size={20}/><span>Publicar serviço</span></Link><p>Prévia interativa<br/>Dados locais de demonstração</p></div></>;
+ <nav className="ws-nav" aria-label="Navegação principal">{telas.map(([id,label],i)=>{if(id==="landing"||id==="entrar")return null;const Icon=icons[i];return <Link key={id} href={rotas[id]} onClick={close} aria-current={active===id?"page":undefined} title={label}><Icon size={20}/><span>{id==="oportunidades"?"Oportunidades & Chat":id==="servico"?"Gestão de Serviços":label}</span></Link>})}</nav>
+ <div className="ws-bottom"><Link href={rotas.publicar} onClick={close} className="ws-publish" title="Publicar serviço"><Plus size={20}/><span>Publicar serviço</span></Link><button type="button" className="ws-logout" onClick={signOut} title="Sair" aria-label="Sair"><LogOut size={20}/><span>Sair</span></button><p>Prévia interativa<br/>Dados locais de demonstração</p></div></>;
 }
 export function WorkspaceShell({tela,children}:{tela:string;children:ReactNode}){
  const [collapsed,setCollapsed]=useState(false);
