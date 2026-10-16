@@ -1,0 +1,39 @@
+/* Preview-only tokens. Motion follows Emil Kowalski's design engineering guidance. */
+.preview-design-system {
+  --kd-canvas: #f8f8ff;
+  --kd-surface: #ffffff;
+  --kd-surface-soft: #eef3ff;
+  --kd-ink: #17283e;
+  --kd-brand: #00805b;
+  --kd-border: #c8cdd7;
+  --kd-radius-sm: 6px;
+  --kd-radius-md: 10px;
+  --kd-radius-lg: 14px;
+  --kd-radius-xl: 18px;
+  --kd-font: Arial, Helvetica, sans-serif;
+  --kd-duration-press: 120ms;
+  --kd-duration-feedback: 160ms;
+  --kd-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --kd-focus-ring: #00805b;
+  color: var(--kd-ink);
+  background: var(--kd-canvas);
+}
+.preview-design-system :where(button, a, input, textarea, select):focus-visible {
+  outline: 3px solid var(--kd-focus-ring);
+  outline-offset: 3px;
+}
+.preview-design-system :where(input, textarea, select) { accent-color: var(--kd-brand); }
+@media (hover: hover) and (pointer: fine) {
+  .preview-design-system :where(button, a) {
+    transition: filter var(--kd-duration-feedback) var(--kd-ease-out);
+  }
+  .preview-design-system :where(button, a):hover { filter: brightness(.96); }
+  .preview-design-system :where(button, a):active:not(:focus-visible) { filter: brightness(.90); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .preview-design-system *, .preview-design-system *::before, .preview-design-system *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
