@@ -16,10 +16,11 @@ import { Unknown } from "./pages/unknown";
 function PreviewContent({ tela }: { tela: string }) {
   const router=useRouter();
   const [session]=useDemoState("demo-session",false);
-  const internal=tela!=="landing"&&tela!=="entrar";
+  const internal=tela!=="landing"&&tela!=="entrar"&&tela!=="cadastro";
   useEffect(()=>{if(internal&&!session)router.replace("/preview/entrar");},[internal,session,router]);
   const normalized: Tela | null = telas.some(([slug]) => slug === tela) ? tela as Tela : null;
   if(internal&&!session)return <p role="status">Redirecionando para entrar…</p>;
+  if(tela==="cadastro")return <Login cadastro/>;
   if (!normalized) return <Unknown />;
   return (
     <div className="min-h-screen bg-[#faf6ee] font-sans text-[#111111] selection:bg-[#d4e9e2] selection:text-[#111111]" style={{ fontFamily: '"SoDoSans", Arial, sans-serif' }}>
@@ -36,7 +37,7 @@ function PreviewContent({ tela }: { tela: string }) {
 }
 
 export function FigmaPreview({tela}:{tela:string}) {
- const publicPage=tela==="landing"||tela==="entrar";
+ const publicPage=tela==="landing"||tela==="entrar"||tela==="cadastro";
  const content=<DemoProvider><PreviewContent tela={tela}/></DemoProvider>;
  return publicPage?content:<WorkspaceShell tela={tela}>{content}</WorkspaceShell>;
 }
